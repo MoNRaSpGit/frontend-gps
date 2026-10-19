@@ -223,9 +223,15 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   padding: 14px 18px;
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
+}
+
+.gps-bottom-bar-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .gps-stat-grid {

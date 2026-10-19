@@ -47,6 +47,10 @@ export function submitPicks(token: string, clientIds: number[]) {
   return request<{ alreadyConfirmed: boolean }>("/picks", token, { method: "POST", body: JSON.stringify({ clientIds }) });
 }
 
+export function resetPicks(token: string) {
+  return request<{ ok: true }>("/picks", token, { method: "DELETE" });
+}
+
 export function fetchStatus(token: string) {
   return request<GpsRepartidorStatus[]>("/picks/status", token);
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchClients, fetchFinalRoute, fetchMyPicks, fetchStatus, submitPicks } from "../gps.client";
+import { fetchClients, fetchFinalRoute, fetchMyPicks, fetchStatus, resetPicks, submitPicks } from "../gps.client";
 import type { GpsClient, GpsFinalRoute, GpsRepartidorStatus, GpsSession } from "../gps.types";
 import { RouteMapModal } from "./RouteMapModal";
 import type { RoutePoint } from "./RouteMapModal";
@@ -14,6 +14,7 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewPoints, setPreviewPoints] = useState<RoutePoint[] | null>(null);
   const [showFinalRoute, setShowFinalRoute] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   function loadAll() {
     Promise.all([fetchClients(session.token), fetchMyPicks(session.token), fetchStatus(session.token)])
@@ -60,6 +61,24 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
       .finally(() => setIsSubmitting(false));
   }
 
+  // Pedido explicito (14/11/2026): "me equivoqué, dejame editar la ruta" --
+  // deshace la confirmación en el backend, pero deja los checkboxes tal
+  // cual estaban (no reinicia la seleccion), asi solo tiene que corregir
+  // el error puntual y volver a generar.
+  function handleEditar() {
+    if (isEditing) return;
+    setIsEditing(true);
+    setError("");
+    resetPicks(session.token)
+      .then(() => {
+        setConfirmed(false);
+        setPreviewPoints(null);
+        loadAll();
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "No se pudo habilitar la edición."))
+      .finally(() => setIsEditing(false));
+  }
+
   function handleVerRutaFinal() {
     fetchFinalRoute(session.token)
       .then((route) => {
@@ -86,7 +105,7 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
 
       <p className="gps-muted">
         {confirmed
-          ? `Ya confirmaste tu selección (${selectedIds.size} cliente(s)). No se puede modificar.`
+          ? `Ya confirmaste tu selección (${selectedIds.size} cliente(s)). Tocá "Editar selección" si te equivocaste.`
           : "Tildá a los clientes a los que le vendiste hoy y generá tu ruta."}
       </p>
 
@@ -113,9 +132,16 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
         <div>
           <span className="gps-muted">{selectedIds.size} cliente(s) tildado(s)</span>
         </div>
-        <button type="button" className="gps-button" onClick={handleGenerarRuta} disabled={confirmed || isSubmitting || selectedIds.size === 0}>
-          {confirmed ? "Ruta generada" : isSubmitting ? "Generando…" : "Generar ruta"}
-        </button>
+        <div className="gps-bottom-bar-actions">
+          {confirmed && (
+            <button type="button" className="gps-button-secondary" onClick={handleEditar} disabled={isEditing}>
+              {isEditing ? "Editando…" : "Editar selección"}
+            </button>
+          )}
+          <button type="button" className="gps-button" onClick={handleGenerarRuta} disabled={confirmed || isSubmitting || selectedIds.size === 0}>
+            {confirmed ? "Ruta generada" : isSubmitting ? "Generando…" : "Generar ruta"}
+          </button>
+        </div>
       </div>
 
       <h2 className="gps-section-title">Estado del equipo</h2>
