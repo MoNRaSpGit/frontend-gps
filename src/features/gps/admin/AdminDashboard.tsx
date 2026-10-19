@@ -1,54 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
-import { fetchAllSales, fetchClients, fetchProducts } from "../gps.client";
-import type { GpsSale, GpsSession } from "../gps.types";
-
-function formatMoney(amount: number) {
-  return `$${amount.toLocaleString("es-UY")}`;
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("es-UY", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-}
-
-type StatusFilter = "todas" | "pendiente" | "entregado";
+import { useEffect, useState } from "react";
+import { fetchClients, fetchFinalRoute, fetchStatus } from "../gps.client";
+import type { GpsClient, GpsFinalRoute, GpsRepartidorStatus, GpsSession } from "../gps.types";
+import { RouteMapModal } from "../repartidor/RouteMapModal";
 
 export function AdminDashboard({ session }: { session: GpsSession }) {
-  const [sales, setSales] = useState<GpsSale[] | null>(null);
-  const [clientCount, setClientCount] = useState<number | null>(null);
-  const [productCount, setProductCount] = useState<number | null>(null);
+  const [clients, setClients] = useState<GpsClient[] | null>(null);
+  const [status, setStatus] = useState<GpsRepartidorStatus[] | null>(null);
+  const [finalRoute, setFinalRoute] = useState<GpsFinalRoute | null>(null);
   const [error, setError] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("todas");
-  const [courierFilter, setCourierFilter] = useState<string>("todos");
+  const [showFinalRoute, setShowFinalRoute] = useState(false);
 
-  useEffect(() => {
-    Promise.all([fetchAllSales(session.token), fetchClients(session.token), fetchProducts(session.token)])
-      .then(([salesResult, clients, products]) => {
-        setSales(salesResult);
-        setClientCount(clients.length);
-        setProductCount(products.length);
+  function loadAll() {
+    Promise.all([fetchClients(session.token), fetchStatus(session.token), fetchFinalRoute(session.token)])
+      .then(([clientsResult, statusResult, routeResult]) => {
+        setClients(clientsResult);
+        setStatus(statusResult);
+        setFinalRoute(routeResult);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "No se pudo cargar el resumen."));
+  }
+
+  useEffect(() => {
+    loadAll();
+    const intervalId = window.setInterval(loadAll, 15000);
+    return () => window.clearInterval(intervalId);
   }, [session.token]);
 
-  const couriers = useMemo(() => {
-    const names = new Set<string>();
-    (sales ?? []).forEach((sale) => {
-      if (sale.courierName) names.add(sale.courierName);
-    });
-    return Array.from(names).sort();
-  }, [sales]);
-
-  const filteredSales = useMemo(() => {
-    return (sales ?? []).filter((sale) => {
-      if (statusFilter !== "todas" && sale.status !== statusFilter) return false;
-      if (courierFilter !== "todos" && sale.courierName !== courierFilter) return false;
-      return true;
-    });
-  }, [sales, statusFilter, courierFilter]);
-
-  const pendingCount = sales?.filter((sale) => sale.status === "pendiente").length ?? 0;
-  const deliveredCount = sales?.filter((sale) => sale.status === "entregado").length ?? 0;
-  const totalRevenue = sales?.reduce((sum, sale) => sum + sale.total, 0) ?? 0;
+  const confirmedCount = status?.filter((entry) => entry.confirmed).length ?? 0;
+  const totalPicks = status?.reduce((sum, entry) => sum + entry.pickCount, 0) ?? 0;
 
   return (
     <section className="gps-screen gps-screen--wide">
@@ -57,88 +36,78 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
 
       <div className="gps-stat-grid">
         <div className="gps-stat-card">
-          <span className="gps-muted">Clientes</span>
-          <strong>{clientCount ?? "—"}</strong>
+          <span className="gps-muted">Clientes totales</span>
+          <strong>{clients?.length ?? "—"}</strong>
         </div>
         <div className="gps-stat-card">
-          <span className="gps-muted">Productos</span>
-          <strong>{productCount ?? "—"}</strong>
+          <span className="gps-muted">Repartidores confirmados</span>
+          <strong>{status ? `${confirmedCount}/${status.length}` : "—"}</strong>
         </div>
         <div className="gps-stat-card">
-          <span className="gps-muted">Pendientes</span>
-          <strong>{pendingCount}</strong>
+          <span className="gps-muted">Clientes seleccionados hoy</span>
+          <strong>{totalPicks}</strong>
         </div>
         <div className="gps-stat-card">
-          <span className="gps-muted">Entregadas</span>
-          <strong>{deliveredCount}</strong>
-        </div>
-        <div className="gps-stat-card">
-          <span className="gps-muted">Facturado total</span>
-          <strong>{formatMoney(totalRevenue)}</strong>
+          <span className="gps-muted">Ruta final</span>
+          <strong>{finalRoute?.ready ? "Lista" : "En espera"}</strong>
         </div>
       </div>
 
-      <div className="gps-table-toolbar">
-        <h2 className="gps-section-title">Ventas</h2>
-        <div className="gps-table-filters">
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
-            <option value="todas">Todas</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="entregado">Entregadas</option>
-          </select>
-          <select value={courierFilter} onChange={(event) => setCourierFilter(event.target.value)}>
-            <option value="todos">Todos los repartidores</option>
-            {couriers.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+      <h2 className="gps-section-title">Estado de hoy</h2>
+      <ul className="gps-list">
+        {status?.map((entry) => (
+          <li key={entry.username} className="gps-card gps-card--row">
+            <strong>{entry.fullName ?? entry.username}</strong>
+            <span className={`gps-badge ${entry.confirmed ? "gps-badge--entregado" : "gps-badge--pendiente"}`}>
+              {entry.confirmed ? `Confirmado (${entry.pickCount} clientes)` : "Pendiente"}
+            </span>
+          </li>
+        ))}
+        {status === null && !error && <p className="gps-muted">Cargando…</p>}
+      </ul>
 
-      {sales === null && !error && <p className="gps-muted">Cargando…</p>}
-
-      {sales !== null && (
-        <div className="gps-table-wrap">
-          <table className="gps-table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Cliente</th>
-                <th>Dirección</th>
-                <th>Productos</th>
-                <th>Total</th>
-                <th>Estado</th>
-                <th>Repartidor</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredSales.map((sale) => (
-                <tr key={sale.id}>
-                  <td>{formatDate(sale.createdAt)}</td>
-                  <td>{sale.clientName}</td>
-                  <td className="gps-table-address">{sale.clientAddress}</td>
-                  <td className="gps-table-items">{sale.items.map((item) => `${item.quantity}× ${item.productName}`).join(", ")}</td>
-                  <td>{formatMoney(sale.total)}</td>
-                  <td>
-                    <span className={`gps-badge gps-badge--${sale.status}`}>
-                      {sale.status === "pendiente" ? "Pendiente" : "Entregado"}
-                    </span>
-                  </td>
-                  <td>{sale.courierName ?? <span className="gps-muted">—</span>}</td>
-                </tr>
-              ))}
-              {filteredSales.length === 0 && (
+      {finalRoute?.ready && (
+        <>
+          <h2 className="gps-section-title">Ruta final combinada</h2>
+          <div className="gps-table-wrap">
+            <table className="gps-table">
+              <thead>
                 <tr>
-                  <td colSpan={7} className="gps-muted gps-table-empty">
-                    No hay ventas que coincidan con el filtro.
-                  </td>
+                  <th>Cliente</th>
+                  <th>Dirección</th>
+                  <th>Repartidor</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {finalRoute.items.map((item) => (
+                  <tr key={`${item.repartidorUsername}-${item.client.id}`}>
+                    <td>{item.client.name}</td>
+                    <td className="gps-table-address">{item.client.address}</td>
+                    <td>{item.repartidorName ?? item.repartidorUsername}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button type="button" className="gps-button" onClick={() => setShowFinalRoute(true)}>
+            Ver en el mapa
+          </button>
+        </>
+      )}
+
+      {showFinalRoute && finalRoute?.ready && (
+        <RouteMapModal
+          title="Ruta final combinada (demo)"
+          points={finalRoute.items.map((item) => ({
+            id: item.client.id,
+            lat: item.client.lat,
+            lng: item.client.lng,
+            title: item.client.name,
+            subtitle: item.client.address,
+            tag: item.repartidorName ?? item.repartidorUsername
+          }))}
+          onClose={() => setShowFinalRoute(false)}
+        />
       )}
     </section>
   );

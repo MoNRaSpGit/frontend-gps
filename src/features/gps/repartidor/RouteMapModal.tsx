@@ -1,7 +1,8 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef } from "react";
-import type { GpsSale } from "../gps.types";
+
+export type RoutePoint = { id: number; lat: number; lng: number; title: string; subtitle: string; tag?: string };
 
 // Deposito/punto de partida ficticio (centro de Montevideo), para que la
 // ruta siempre arranque del mismo lugar.
@@ -16,7 +17,7 @@ function numberedIcon(label: string, color: string) {
   });
 }
 
-export function RouteMapModal({ sales, onClose }: { sales: GpsSale[]; onClose: () => void }) {
+export function RouteMapModal({ title, points, onClose }: { title: string; points: RoutePoint[]; onClose: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,32 +30,32 @@ export function RouteMapModal({ sales, onClose }: { sales: GpsSale[]; onClose: (
     });
     tileLayer.addTo(map);
 
-    const points: Array<[number, number]> = [[DEPOT.lat, DEPOT.lng], ...sales.map((sale): [number, number] => [sale.clientLat, sale.clientLng])];
+    const latLngs: Array<[number, number]> = [[DEPOT.lat, DEPOT.lng], ...points.map((point): [number, number] => [point.lat, point.lng])];
 
     L.marker([DEPOT.lat, DEPOT.lng], { icon: numberedIcon("D", "#0b5fff") }).addTo(map).bindPopup(DEPOT.name);
-    sales.forEach((sale, index) => {
-      L.marker([sale.clientLat, sale.clientLng], { icon: numberedIcon(String(index + 1), "#16a34a") })
+    points.forEach((point, index) => {
+      L.marker([point.lat, point.lng], { icon: numberedIcon(String(index + 1), "#16a34a") })
         .addTo(map)
-        .bindPopup(`${index + 1}. ${sale.clientName}<br/>${sale.clientAddress}`);
+        .bindPopup(`${index + 1}. ${point.title}<br/>${point.subtitle}`);
     });
 
     // Ruta ficticia: solo une los puntos en linea recta, en el orden en que
-    // llegaron las ventas -- NO es una ruta real calculada por calles. Es
-    // una demo visual, no reemplaza el calculo real con Google/OR-Tools.
-    L.polyline(points, { color: "#0b5fff", weight: 4, dashArray: "8 6", opacity: 0.8 }).addTo(map);
+    // llegaron -- NO es una ruta real calculada por calles. Es una demo
+    // visual, no reemplaza el calculo real con Google/OR-Tools.
+    L.polyline(latLngs, { color: "#0b5fff", weight: 4, dashArray: "8 6", opacity: 0.8 }).addTo(map);
 
-    map.fitBounds(L.latLngBounds(points), { padding: [40, 40] });
+    map.fitBounds(L.latLngBounds(latLngs), { padding: [40, 40] });
 
     return () => {
       map.remove();
     };
-  }, [sales]);
+  }, [points]);
 
   return (
     <div className="gps-modal-overlay" onClick={onClose}>
       <div className="gps-modal-card gps-modal-card--map" onClick={(event) => event.stopPropagation()}>
         <header className="gps-modal-header">
-          <h2>Ruta sugerida (demo)</h2>
+          <h2>{title}</h2>
           <button type="button" className="gps-modal-close" onClick={onClose}>
             ✕
           </button>
@@ -65,9 +66,9 @@ export function RouteMapModal({ sales, onClose }: { sales: GpsSale[]; onClose: (
         <div ref={containerRef} className="gps-map-container" />
         <ol className="gps-route-order">
           <li>Depósito (salida)</li>
-          {sales.map((sale) => (
-            <li key={sale.id}>
-              {sale.clientName} — {sale.clientAddress}
+          {points.map((point) => (
+            <li key={point.id}>
+              {point.tag ? <strong>[{point.tag}]</strong> : null} {point.title} — {point.subtitle}
             </li>
           ))}
         </ol>

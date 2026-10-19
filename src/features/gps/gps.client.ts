@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../../shared/config/api";
-import type { GpsClient, GpsProduct, GpsSale, GpsSession, GpsUser } from "./gps.types";
+import type { GpsClient, GpsFinalRoute, GpsRepartidorStatus, GpsSession, GpsUser } from "./gps.types";
 
 function buildUrl(path: string) {
   return `${API_BASE_URL}/api/v1/gps${path}`;
@@ -39,22 +39,18 @@ export function fetchClients(token: string) {
   return request<GpsClient[]>("/clients", token);
 }
 
-export function fetchProducts(token: string) {
-  return request<GpsProduct[]>("/products", token);
+export function fetchMyPicks(token: string) {
+  return request<{ clientIds: number[] }>("/picks/me", token);
 }
 
-export function createSale(token: string, clientId: number, items: Array<{ productId: number; quantity: number }>) {
-  return request<GpsSale>("/sales", token, { method: "POST", body: JSON.stringify({ clientId, items }) });
+export function submitPicks(token: string, clientIds: number[]) {
+  return request<{ alreadyConfirmed: boolean }>("/picks", token, { method: "POST", body: JSON.stringify({ clientIds }) });
 }
 
-export function fetchPendingSales(token: string) {
-  return request<GpsSale[]>("/sales/pending", token);
+export function fetchStatus(token: string) {
+  return request<GpsRepartidorStatus[]>("/picks/status", token);
 }
 
-export function fetchAllSales(token: string) {
-  return request<GpsSale[]>("/sales", token);
-}
-
-export function markSaleDelivered(token: string, saleId: number, courierName: string) {
-  return request<{ ok: true }>(`/sales/${saleId}/deliver`, token, { method: "POST", body: JSON.stringify({ courierName }) });
+export function fetchFinalRoute(token: string) {
+  return request<GpsFinalRoute>("/picks/final", token);
 }

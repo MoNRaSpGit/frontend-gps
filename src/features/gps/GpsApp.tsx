@@ -3,9 +3,8 @@ import { LoginScreen } from "./auth/LoginScreen";
 import { useAuthSession } from "./auth/useAuthSession";
 import { logout } from "./gps.client";
 import { RepartidorScreen } from "./repartidor/RepartidorScreen";
-import { VendedorScreen } from "./vendedor/VendedorScreen";
 
-const ROLE_LABELS = { admin: "Admin", vendedor: "Vendedor", repartidor: "Repartidor" } as const;
+const ROLE_LABELS = { admin: "Admin", repartidor: "Repartidor" } as const;
 
 export function GpsApp() {
   const { session, saveSession, clearSession } = useAuthSession();
@@ -34,7 +33,6 @@ export function GpsApp() {
       </header>
 
       {session.user.role === "admin" && <AdminDashboard session={session} />}
-      {session.user.role === "vendedor" && <VendedorScreen session={session} />}
       {session.user.role === "repartidor" && <RepartidorScreen session={session} />}
     </div>
   );

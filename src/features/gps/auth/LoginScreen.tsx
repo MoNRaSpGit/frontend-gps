@@ -1,14 +1,12 @@
 import { useRef, useState } from "react";
 import { login } from "../gps.client";
+import { GPS_REPARTIDORES } from "../gps.types";
 import type { GpsSession } from "../gps.types";
 
-// Los roles de campo (vendedor/repartidor) tienen usuario fijo -- no tiene
-// sentido que lo tipeen cada vez. El admin si usa el formulario manual
-// (usuario + contraseña), para no andar mostrando su usuario en un boton.
-const QUICK_ROLES = [
-  { username: "vendedor", label: "Vendedor" },
-  { username: "repartidor", label: "Repartidor" }
-] as const;
+// Los repartidores tienen usuario fijo -- no tiene sentido que lo tipeen
+// cada vez. El admin si usa el formulario manual (usuario + contraseña),
+// para no andar mostrando su usuario en un boton.
+const QUICK_ROLES = GPS_REPARTIDORES;
 
 export function LoginScreen({ onLogin }: { onLogin: (session: GpsSession) => void }) {
   const [quickUsername, setQuickUsername] = useState<string | null>(null);
