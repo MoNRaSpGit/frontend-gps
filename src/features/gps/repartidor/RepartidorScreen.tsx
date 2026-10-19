@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { fetchPendingSales, markSaleDelivered } from "../gps.client";
+import { GPS_COURIERS } from "../gps.types";
 import type { GpsSale, GpsSession } from "../gps.types";
 import { RouteMapModal } from "./RouteMapModal";
 
@@ -11,6 +12,7 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
   const [sales, setSales] = useState<GpsSale[]>([]);
   const [error, setError] = useState("");
   const [showRoute, setShowRoute] = useState(false);
+  const [courierName, setCourierName] = useState<string>(GPS_COURIERS[0]);
 
   function loadPending() {
     fetchPendingSales(session.token)
@@ -25,7 +27,7 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
   }, [session.token]);
 
   function handleDeliver(saleId: number) {
-    markSaleDelivered(session.token, saleId)
+    markSaleDelivered(session.token, saleId, courierName)
       .then(() => setSales((current) => current.filter((sale) => sale.id !== saleId)))
       .catch((err) => setError(err instanceof Error ? err.message : "No se pudo marcar como entregado."));
   }
@@ -38,6 +40,17 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
           Generar ruta
         </button>
       </header>
+
+      <label className="gps-courier-select">
+        <span className="gps-muted">Repartidor en ruta</span>
+        <select value={courierName} onChange={(event) => setCourierName(event.target.value)}>
+          {GPS_COURIERS.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
 
       {error && <p className="gps-error">{error}</p>}
       {sales.length === 0 && !error && <p className="gps-muted">No hay ventas pendientes de entrega.</p>}

@@ -51,6 +51,10 @@ export function fetchPendingSales(token: string) {
   return request<GpsSale[]>("/sales/pending", token);
 }
 
-export function markSaleDelivered(token: string, saleId: number) {
-  return request<{ ok: true }>(`/sales/${saleId}/deliver`, token, { method: "POST" });
+export function fetchAllSales(token: string) {
+  return request<GpsSale[]>("/sales", token);
+}
+
+export function markSaleDelivered(token: string, saleId: number, courierName: string) {
+  return request<{ ok: true }>(`/sales/${saleId}/deliver`, token, { method: "POST", body: JSON.stringify({ courierName }) });
 }
