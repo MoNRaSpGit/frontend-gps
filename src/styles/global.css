@@ -58,30 +58,6 @@ button {
   margin: 0;
 }
 
-.gps-role-buttons {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.gps-role-button {
-  min-height: 56px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-bg);
-  font-weight: 700;
-}
-
-.gps-role-button:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.gps-role-selected {
-  margin: 0;
-  font-size: 0.9rem;
-}
-
 .gps-login-manual-link {
   border: none;
   background: none;

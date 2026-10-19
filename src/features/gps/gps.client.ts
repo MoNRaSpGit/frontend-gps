@@ -27,6 +27,10 @@ export function login(username: string, password: string) {
   return request<GpsSession>("/auth/login", undefined, { method: "POST", body: JSON.stringify({ username, password }) });
 }
 
+export function loginByPassword(password: string) {
+  return request<GpsSession>("/auth/login-password", undefined, { method: "POST", body: JSON.stringify({ password }) });
+}
+
 export function logout(token: string) {
   return request<{ ok: true }>("/auth/logout", token, { method: "POST" });
 }
