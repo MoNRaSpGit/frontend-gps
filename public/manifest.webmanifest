@@ -1,0 +1,12 @@
+{
+  "name": "GPS",
+  "short_name": "GPS",
+  "description": "Rutas óptimas de entrega.",
+  "lang": "es-UY",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1f3a",
+  "theme_color": "#0b1f3a",
+  "icons": [{ "src": "logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
