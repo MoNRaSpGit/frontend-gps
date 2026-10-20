@@ -55,6 +55,10 @@ export function resetPicks(token: string) {
   return request<{ ok: true }>("/picks", token, { method: "DELETE" });
 }
 
+export function resetAllPicks(token: string) {
+  return request<{ ok: true }>("/picks/all", token, { method: "DELETE" });
+}
+
 export function fetchStatus(token: string) {
   return request<GpsRepartidorStatus[]>("/picks/status", token);
 }

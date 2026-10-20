@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchClients, fetchFinalRoute, fetchStatus } from "../gps.client";
+import { fetchClients, fetchFinalRoute, fetchStatus, resetAllPicks } from "../gps.client";
 import type { GpsClient, GpsFinalRoute, GpsRepartidorStatus, GpsSession } from "../gps.types";
 import { RouteMapModal } from "../repartidor/RouteMapModal";
 
@@ -9,6 +9,8 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
   const [finalRoute, setFinalRoute] = useState<GpsFinalRoute | null>(null);
   const [error, setError] = useState("");
   const [showFinalRoute, setShowFinalRoute] = useState(false);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   function loadAll() {
     Promise.all([fetchClients(session.token), fetchStatus(session.token), fetchFinalRoute(session.token)])
@@ -29,9 +31,39 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
   const confirmedCount = status?.filter((entry) => entry.confirmed).length ?? 0;
   const totalPicks = status?.reduce((sum, entry) => sum + entry.pickCount, 0) ?? 0;
 
+  function handleResetAll() {
+    setResetting(true);
+    setError("");
+    resetAllPicks(session.token)
+      .then(() => {
+        setConfirmingReset(false);
+        setShowFinalRoute(false);
+        loadAll();
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "No se pudieron reiniciar las rutas."))
+      .finally(() => setResetting(false));
+  }
+
   return (
     <section className="gps-screen gps-screen--wide">
-      <h1>Panel de control</h1>
+      <header className="gps-screen-header">
+        <h1>Panel de control</h1>
+        {!confirmingReset ? (
+          <button type="button" className="gps-button-secondary" onClick={() => setConfirmingReset(true)}>
+            Reiniciar rutas
+          </button>
+        ) : (
+          <div className="gps-reset-confirm">
+            <span className="gps-muted">¿Reiniciar la selección de los 3 repartidores?</span>
+            <button type="button" className="gps-button-secondary" onClick={() => setConfirmingReset(false)} disabled={resetting}>
+              Cancelar
+            </button>
+            <button type="button" className="gps-button" onClick={handleResetAll} disabled={resetting}>
+              {resetting ? "Reiniciando…" : "Sí, reiniciar"}
+            </button>
+          </div>
+        )}
+      </header>
       {error && <p className="gps-error">{error}</p>}
 
       <div className="gps-stat-grid">

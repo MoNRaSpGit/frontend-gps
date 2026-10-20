@@ -163,6 +163,13 @@ button {
   flex-wrap: wrap;
 }
 
+.gps-reset-confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .gps-section-title {
   margin: 20px 0 10px;
   font-size: 1rem;
