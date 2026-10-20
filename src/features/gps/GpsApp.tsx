@@ -2,7 +2,7 @@ import { AdminDashboard } from "./admin/AdminDashboard";
 import { LoginScreen } from "./auth/LoginScreen";
 import { useAuthSession } from "./auth/useAuthSession";
 import { logout } from "./gps.client";
-import { RepartidorScreen } from "./repartidor/RepartidorScreen";
+import { RepartidorTabsScreen } from "./repartidor/RepartidorTabsScreen";
 
 const ROLE_LABELS = { admin: "Admin", repartidor: "Repartidor" } as const;
 
@@ -33,7 +33,7 @@ export function GpsApp() {
       </header>
 
       {session.user.role === "admin" && <AdminDashboard session={session} />}
-      {session.user.role === "repartidor" && <RepartidorScreen session={session} />}
+      {session.user.role === "repartidor" && <RepartidorTabsScreen session={session} />}
     </div>
   );
 }

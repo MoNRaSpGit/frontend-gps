@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../../shared/config/api";
-import type { GpsClient, GpsFinalRoute, GpsRepartidorStatus, GpsSession, GpsUser } from "./gps.types";
+import type { GpsClient, GpsFinalRoute, GpsPersona, GpsRepartidorStatus, GpsSession, GpsUser } from "./gps.types";
 
 function buildUrl(path: string) {
   return `${API_BASE_URL}/api/v1/gps${path}`;
@@ -39,20 +39,25 @@ export function fetchMe(token: string) {
   return request<GpsUser>("/auth/me", token, { method: "POST" });
 }
 
-export function fetchClients(token: string) {
-  return request<GpsClient[]>("/clients", token);
+export function fetchPersonas(token: string) {
+  return request<GpsPersona[]>("/personas", token);
 }
 
-export function fetchMyPicks(token: string) {
-  return request<{ clientIds: number[] }>("/picks/me", token);
+export function fetchClients(token: string, persona?: string) {
+  const query = persona ? `?persona=${encodeURIComponent(persona)}` : "";
+  return request<GpsClient[]>(`/clients${query}`, token);
 }
 
-export function submitPicks(token: string, clientIds: number[]) {
-  return request<{ alreadyConfirmed: boolean }>("/picks", token, { method: "POST", body: JSON.stringify({ clientIds }) });
+export function fetchMyPicks(token: string, persona: string) {
+  return request<{ clientIds: number[] }>(`/picks/me?persona=${encodeURIComponent(persona)}`, token);
 }
 
-export function resetPicks(token: string) {
-  return request<{ ok: true }>("/picks", token, { method: "DELETE" });
+export function submitPicks(token: string, persona: string, clientIds: number[]) {
+  return request<{ alreadyConfirmed: boolean }>("/picks", token, { method: "POST", body: JSON.stringify({ persona, clientIds }) });
+}
+
+export function resetPicks(token: string, persona: string) {
+  return request<{ ok: true }>(`/picks?persona=${encodeURIComponent(persona)}`, token, { method: "DELETE" });
 }
 
 export function resetAllPicks(token: string) {

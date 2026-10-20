@@ -1,11 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchClients, fetchFinalRoute, fetchMyPicks, fetchStatus, resetAllPicks, resetPicks, submitPicks } from "../gps.client";
-import type { GpsClient, GpsFinalRoute, GpsRepartidorStatus, GpsSession } from "../gps.types";
+import type { GpsClient, GpsFinalRoute, GpsPersona, GpsRepartidorStatus, GpsSession } from "../gps.types";
 import { RouteMapModal } from "./RouteMapModal";
 import type { RoutePoint } from "./RouteMapModal";
 
-export function RepartidorScreen({ session }: { session: GpsSession }) {
+// Pedido explicito (20/10/2026): ya no hay una cuenta por persona -- el
+// login es generico y esta pantalla se renderiza una vez por pestaña
+// (Martín/Ana/Juan/Pedro), recibiendo cual le toca por prop en vez de
+// sacarlo de la sesion.
+export function RepartidorScreen({ session, persona }: { session: GpsSession; persona: GpsPersona }) {
   const [clients, setClients] = useState<GpsClient[]>([]);
+  const [search, setSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [confirmed, setConfirmed] = useState(false);
   const [status, setStatus] = useState<GpsRepartidorStatus[]>([]);
@@ -19,11 +24,11 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
   const [resettingAll, setResettingAll] = useState(false);
 
   function loadAll() {
-    Promise.all([fetchClients(session.token), fetchMyPicks(session.token), fetchStatus(session.token)])
+    Promise.all([fetchClients(session.token, persona.key), fetchMyPicks(session.token, persona.key), fetchStatus(session.token)])
       .then(([clientsResult, myPicks, statusResult]) => {
         setClients(clientsResult);
         setSelectedIds(new Set(myPicks.clientIds));
-        setConfirmed(myPicks.clientIds.length > 0 && statusResult.some((entry) => entry.username === session.user.username && entry.confirmed));
+        setConfirmed(myPicks.clientIds.length > 0 && statusResult.some((entry) => entry.username === persona.key && entry.confirmed));
         setStatus(statusResult);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "No se pudieron cargar los datos."));
@@ -33,7 +38,13 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
     loadAll();
     const intervalId = window.setInterval(loadAll, 15000);
     return () => window.clearInterval(intervalId);
-  }, [session.token]);
+  }, [session.token, persona.key]);
+
+  const filteredClients = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return clients;
+    return clients.filter((client) => client.name.toLowerCase().includes(term) || client.address.toLowerCase().includes(term));
+  }, [clients, search]);
 
   function toggleClient(clientId: number) {
     if (confirmed) return;
@@ -49,7 +60,7 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
     if (confirmed || isSubmitting || selectedIds.size === 0) return;
     setIsSubmitting(true);
     setError("");
-    submitPicks(session.token, Array.from(selectedIds))
+    submitPicks(session.token, persona.key, Array.from(selectedIds))
       .then(() => {
         setConfirmed(true);
         setPreviewPoints(
@@ -71,7 +82,7 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
     if (isEditing) return;
     setIsEditing(true);
     setError("");
-    resetPicks(session.token)
+    resetPicks(session.token, persona.key)
       .then(() => {
         setConfirmed(false);
         setPreviewPoints(null);
@@ -82,7 +93,7 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
   }
 
   // Pedido explicito: cualquiera (no solo el admin) puede reiniciar la
-  // ruta de los 3, es una demo.
+  // ruta de las 4 pestañas, es una demo.
   function handleResetAll() {
     setResettingAll(true);
     setError("");
@@ -111,10 +122,10 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
   return (
     <section className="gps-screen">
       <header className="gps-screen-header">
-        <h1>Mis clientes de hoy</h1>
+        <h1>Clientes de {persona.fullName}</h1>
         {confirmed && previewPoints && (
           <button type="button" className="gps-button-secondary" onClick={() => setPreviewPoints(previewPoints)}>
-            Ver mi ruta preliminar
+            Ver ruta preliminar
           </button>
         )}
       </header>
@@ -123,12 +134,20 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
 
       <p className="gps-muted">
         {confirmed
-          ? `Ya confirmaste tu selección (${selectedIds.size} cliente(s)). Tocá "Editar selección" si te equivocaste.`
-          : "Tildá a los clientes a los que le vendiste hoy y generá tu ruta."}
+          ? `Ya confirmó su selección (${selectedIds.size} cliente(s)). Tocá "Editar selección" si se equivocó.`
+          : "Buscá y tildá a los clientes a los que le vendió hoy, y generá la ruta."}
       </p>
 
+      <input
+        className="gps-search-input"
+        type="search"
+        placeholder="Buscar cliente por nombre o dirección…"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+      />
+
       <ul className="gps-list gps-client-pick-list">
-        {clients.map((client) => (
+        {filteredClients.map((client) => (
           <li key={client.id} className={`gps-card gps-card--row gps-pick-row ${selectedIds.has(client.id) ? "is-picked" : ""}`}>
             <label className="gps-pick-label">
               <input
@@ -144,6 +163,7 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
             </label>
           </li>
         ))}
+        {filteredClients.length === 0 && <p className="gps-muted">Sin resultados para "{search}".</p>}
       </ul>
 
       <div className="gps-bottom-bar">
@@ -170,7 +190,7 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
           </button>
         ) : (
           <div className="gps-reset-confirm">
-            <span className="gps-muted">¿Reiniciar la selección de los 3?</span>
+            <span className="gps-muted">¿Reiniciar la selección de las 4 pestañas?</span>
             <button type="button" className="gps-button-secondary" onClick={() => setConfirmingReset(false)} disabled={resettingAll}>
               Cancelar
             </button>
@@ -196,11 +216,11 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
           Ver ruta final
         </button>
       ) : (
-        <p className="gps-muted">La ruta final se habilita cuando los 3 confirmaron su selección.</p>
+        <p className="gps-muted">La ruta final se habilita cuando las 4 confirmaron su selección.</p>
       )}
 
       {previewPoints && !showFinalRoute && (
-        <RouteMapModal title="Mi ruta preliminar (demo)" points={previewPoints} onClose={() => setPreviewPoints(null)} />
+        <RouteMapModal title={`Ruta preliminar de ${persona.fullName} (demo)`} points={previewPoints} onClose={() => setPreviewPoints(null)} />
       )}
 
       {showFinalRoute && finalRoute && (
