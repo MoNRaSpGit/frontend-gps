@@ -49,7 +49,7 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
       <header className="gps-screen-header">
         <h1>Panel de control</h1>
         {!confirmingReset ? (
-          <button type="button" className="gps-button-secondary" onClick={() => setConfirmingReset(true)}>
+          <button type="button" className="gps-button-warning" onClick={() => setConfirmingReset(true)}>
             Reiniciar rutas
           </button>
         ) : (

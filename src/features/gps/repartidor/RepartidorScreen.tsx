@@ -185,7 +185,7 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
       <div className="gps-screen-header">
         <h2 className="gps-section-title">Estado del equipo</h2>
         {!confirmingReset ? (
-          <button type="button" className="gps-button-secondary" onClick={() => setConfirmingReset(true)}>
+          <button type="button" className="gps-button-warning" onClick={() => setConfirmingReset(true)}>
             Reiniciar rutas
           </button>
         ) : (
