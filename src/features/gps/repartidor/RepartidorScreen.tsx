@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchClients, fetchFinalRoute, fetchMyPicks, fetchStatus, resetPicks, submitPicks } from "../gps.client";
+import { fetchClients, fetchFinalRoute, fetchMyPicks, fetchStatus, resetAllPicks, resetPicks, submitPicks } from "../gps.client";
 import type { GpsClient, GpsFinalRoute, GpsRepartidorStatus, GpsSession } from "../gps.types";
 import { RouteMapModal } from "./RouteMapModal";
 import type { RoutePoint } from "./RouteMapModal";
@@ -15,6 +15,8 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
   const [previewPoints, setPreviewPoints] = useState<RoutePoint[] | null>(null);
   const [showFinalRoute, setShowFinalRoute] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [resettingAll, setResettingAll] = useState(false);
 
   function loadAll() {
     Promise.all([fetchClients(session.token), fetchMyPicks(session.token), fetchStatus(session.token)])
@@ -77,6 +79,22 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
       })
       .catch((err) => setError(err instanceof Error ? err.message : "No se pudo habilitar la edición."))
       .finally(() => setIsEditing(false));
+  }
+
+  // Pedido explicito: cualquiera (no solo el admin) puede reiniciar la
+  // ruta de los 3, es una demo.
+  function handleResetAll() {
+    setResettingAll(true);
+    setError("");
+    resetAllPicks(session.token)
+      .then(() => {
+        setConfirmingReset(false);
+        setPreviewPoints(null);
+        setShowFinalRoute(false);
+        loadAll();
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "No se pudieron reiniciar las rutas."))
+      .finally(() => setResettingAll(false));
   }
 
   function handleVerRutaFinal() {
@@ -144,7 +162,24 @@ export function RepartidorScreen({ session }: { session: GpsSession }) {
         </div>
       </div>
 
-      <h2 className="gps-section-title">Estado del equipo</h2>
+      <div className="gps-screen-header">
+        <h2 className="gps-section-title">Estado del equipo</h2>
+        {!confirmingReset ? (
+          <button type="button" className="gps-button-secondary" onClick={() => setConfirmingReset(true)}>
+            Reiniciar rutas
+          </button>
+        ) : (
+          <div className="gps-reset-confirm">
+            <span className="gps-muted">¿Reiniciar la selección de los 3?</span>
+            <button type="button" className="gps-button-secondary" onClick={() => setConfirmingReset(false)} disabled={resettingAll}>
+              Cancelar
+            </button>
+            <button type="button" className="gps-button" onClick={handleResetAll} disabled={resettingAll}>
+              {resettingAll ? "Reiniciando…" : "Sí, reiniciar"}
+            </button>
+          </div>
+        )}
+      </div>
       <ul className="gps-list">
         {status.map((entry) => (
           <li key={entry.username} className="gps-card gps-card--row">
