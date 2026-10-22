@@ -220,12 +220,18 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
       )}
 
       {previewPoints && !showFinalRoute && (
-        <RouteMapModal title={`Ruta preliminar de ${persona.fullName} (demo)`} points={previewPoints} onClose={() => setPreviewPoints(null)} />
+        <RouteMapModal
+          title={`Ruta preliminar de ${persona.fullName}`}
+          points={previewPoints}
+          token={session.token}
+          onClose={() => setPreviewPoints(null)}
+        />
       )}
 
       {showFinalRoute && finalRoute && (
         <RouteMapModal
-          title="Ruta final combinada (demo)"
+          title="Ruta final combinada"
+          token={session.token}
           points={finalRoute.items.map((item) => ({
             id: item.client.id,
             lat: item.client.lat,

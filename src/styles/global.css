@@ -532,3 +532,64 @@ button {
   background: #bbf7d0;
   transition: width 0.08s linear;
 }
+
+/* ---------------- Ruta real y limites del servicio (22/10/2026) ---------------- */
+/* Cartel de corte: tiene que verse si o si (pedido explicito). */
+.gps-quota-banner {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  margin: 8px 0;
+  padding: 28px 20px;
+  border: 3px solid #d64545;
+  border-radius: 14px;
+  background: #fff1f1;
+  color: #8a1c1c;
+  text-align: center;
+}
+
+.gps-quota-banner strong {
+  font-size: 20px;
+}
+
+.gps-quota-banner p {
+  margin: 0;
+}
+
+.gps-quota-phone {
+  font-size: 26px;
+  font-weight: 800;
+  color: #8a1c1c;
+  text-decoration: none;
+}
+
+.gps-usage-alert {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 2px solid #d9a441;
+  border-radius: 12px;
+  background: #fff8e6;
+  color: #6b4b00;
+}
+
+.gps-usage-alert p {
+  margin: 4px 0;
+}
+
+.gps-usage-alert--cut {
+  border-color: #d64545;
+  background: #fff1f1;
+  color: #8a1c1c;
+}
+
+.gps-usage-card--alerta {
+  border-color: #d9a441;
+}
+
+.gps-usage-card--cortado {
+  border-color: #d64545;
+}
+
+.gps-route-start {
+  margin: 12px 0 0;
+}

@@ -13,3 +13,28 @@ export type GpsRepartidorStatus = { username: string; fullName: string | null; c
 export type GpsFinalRouteItem = { client: GpsClient; repartidorUsername: string; repartidorName: string | null };
 
 export type GpsFinalRoute = { ready: boolean; status: GpsRepartidorStatus[]; items: GpsFinalRouteItem[] };
+
+// Ruta optima real calculada por el backend (OpenRouteService).
+export type GpsRoute = {
+  orderedClientIds: number[];
+  // [lat, lng] listo para Leaflet.
+  geometry: Array<[number, number]>;
+  distanceKm: number;
+  durationMin: number;
+  fromCache: boolean;
+};
+
+export type GpsUsageEntry = {
+  service: "optimization" | "directions";
+  label: string;
+  todayCalls: number;
+  dailyLimit: number;
+  alertAt: number;
+  cutAt: number;
+  monthCalls: number;
+  status: "ok" | "alerta" | "cortado";
+  remoteRemaining: number | null;
+  remoteLimit: number | null;
+};
+
+export type GpsUsage = { day: string; providerPhone: string; services: GpsUsageEntry[] };

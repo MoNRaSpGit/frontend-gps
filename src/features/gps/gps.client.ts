@@ -1,5 +1,9 @@
 import { API_BASE_URL } from "../../shared/config/api";
-import type { GpsClient, GpsFinalRoute, GpsPersona, GpsRepartidorStatus, GpsSession, GpsUser } from "./gps.types";
+import type { GpsClient, GpsFinalRoute, GpsPersona, GpsRepartidorStatus, GpsRoute, GpsSession, GpsUsage, GpsUser } from "./gps.types";
+
+// El backend corto el servicio de rutas por llegar al limite (429): la
+// pantalla muestra el cartel de "comunicarse con el proveedor".
+export class GpsQuotaError extends Error {}
 
 function buildUrl(path: string) {
   return `${API_BASE_URL}/api/v1/gps${path}`;
@@ -17,7 +21,9 @@ async function request<T>(path: string, token?: string, init?: RequestInit): Pro
 
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.message || "No se pudo completar la operación.");
+    const message = body?.message || "No se pudo completar la operación.";
+    if (response.status === 429) throw new GpsQuotaError(message);
+    throw new Error(message);
   }
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -70,4 +76,12 @@ export function fetchStatus(token: string) {
 
 export function fetchFinalRoute(token: string) {
   return request<GpsFinalRoute>("/picks/final", token);
+}
+
+export function computeRoute(token: string, clientIds: number[]) {
+  return request<GpsRoute>("/route", token, { method: "POST", body: JSON.stringify({ clientIds }) });
+}
+
+export function fetchUsage(token: string) {
+  return request<GpsUsage>("/usage", token);
 }

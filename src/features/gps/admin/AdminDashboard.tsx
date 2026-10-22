@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchClients, fetchFinalRoute, fetchStatus, resetAllPicks } from "../gps.client";
-import type { GpsClient, GpsFinalRoute, GpsRepartidorStatus, GpsSession } from "../gps.types";
+import { fetchClients, fetchFinalRoute, fetchStatus, fetchUsage, resetAllPicks } from "../gps.client";
+import type { GpsClient, GpsFinalRoute, GpsRepartidorStatus, GpsSession, GpsUsage } from "../gps.types";
 import { RouteMapModal } from "../repartidor/RouteMapModal";
 
 export function AdminDashboard({ session }: { session: GpsSession }) {
@@ -11,6 +11,7 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
   const [showFinalRoute, setShowFinalRoute] = useState(false);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [usage, setUsage] = useState<GpsUsage | null>(null);
 
   function loadAll() {
     Promise.all([fetchClients(session.token), fetchStatus(session.token), fetchFinalRoute(session.token)])
@@ -20,6 +21,10 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
         setFinalRoute(routeResult);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "No se pudo cargar el resumen."));
+    // Aparte: si falla el contador, el resto del panel igual se ve.
+    fetchUsage(session.token)
+      .then(setUsage)
+      .catch(() => setUsage(null));
   }
 
   useEffect(() => {
@@ -66,6 +71,24 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
       </header>
       {error && <p className="gps-error">{error}</p>}
 
+      {/* Aviso al administrador (pedido explicito 22/10/2026): a la mitad
+          del limite diario de un servicio de rutas aparece este cartel; al
+          90% el servicio se corta solo hasta el dia siguiente. */}
+      {usage?.services.some((entry) => entry.status !== "ok") && (
+        <div className={`gps-usage-alert${usage.services.some((entry) => entry.status === "cortado") ? " gps-usage-alert--cut" : ""}`} role="alert">
+          {usage.services
+            .filter((entry) => entry.status !== "ok")
+            .map((entry) => (
+              <p key={entry.service}>
+                <strong>{entry.label}:</strong> {entry.todayCalls} de {entry.dailyLimit} llamadas hoy.{" "}
+                {entry.status === "cortado"
+                  ? "Servicio CORTADO por hoy: las pantallas muestran el aviso de comunicarse con el proveedor."
+                  : `Ya se pasó la mitad del límite diario; se corta a las ${entry.cutAt}.`}
+              </p>
+            ))}
+        </div>
+      )}
+
       <div className="gps-stat-grid">
         <div className="gps-stat-card">
           <span className="gps-muted">Clientes totales</span>
@@ -83,6 +106,22 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
           <span className="gps-muted">Ruta final</span>
           <strong>{finalRoute?.ready ? "Lista" : "En espera"}</strong>
         </div>
+      </div>
+
+      <h2 className="gps-section-title">Servicio de rutas (hoy)</h2>
+      <div className="gps-stat-grid">
+        {usage?.services.map((entry) => (
+          <div key={entry.service} className={`gps-stat-card gps-usage-card gps-usage-card--${entry.status}`}>
+            <span className="gps-muted">{entry.label}</span>
+            <strong>
+              {entry.todayCalls} / {entry.dailyLimit}
+            </strong>
+            <span className="gps-muted">
+              Aviso a {entry.alertAt} · corte a {entry.cutAt} · este mes {entry.monthCalls}
+            </span>
+          </div>
+        ))}
+        {!usage && <p className="gps-muted">Cargando el consumo…</p>}
       </div>
 
       <h2 className="gps-section-title">Estado de hoy</h2>
@@ -129,7 +168,8 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
 
       {showFinalRoute && finalRoute?.ready && (
         <RouteMapModal
-          title="Ruta final combinada (demo)"
+          title="Ruta final combinada"
+          token={session.token}
           points={finalRoute.items.map((item) => ({
             id: item.client.id,
             lat: item.client.lat,
