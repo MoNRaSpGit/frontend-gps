@@ -136,7 +136,7 @@ export function RouteMapModal({
           </div>
         ) : (
           <>
-            {state.kind === "loading" && <p className="gps-muted gps-map-note">Calculando la mejor ruta…</p>}
+            {state.kind === "loading" && <RouteLoader />}
             {state.kind === "preview" && (
               <p className="gps-muted gps-map-note">Vista previa de los clientes elegidos. El orden y el recorrido por calles se calculan en la ruta final.</p>
             )}
@@ -165,6 +165,49 @@ export function RouteMapModal({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+// Mensajes que van rotando mientras se calcula la ruta.
+const LOADING_STEPS = ["Buscando el mejor orden de las paradas…", "Trazando el recorrido por las calles…", "Calculando distancia y tiempo…"];
+
+// Pantalla de espera mientras se calcula la ruta (22/10/2026, pedido
+// explicito: "algo mas lindo para la espera de carga"). Ocupa el mismo
+// lugar que el mapa: un "mapa" de fondo, un camino que se va dibujando y
+// un puntito que lo recorre desde la distribuidora.
+function RouteLoader() {
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setStep((current) => (current + 1) % LOADING_STEPS.length), 1600);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  return (
+    <div className="gps-route-loader" role="status" aria-live="polite">
+      <svg className="gps-route-loader-art" viewBox="0 0 320 180" aria-hidden="true">
+        <path
+          id="gps-loader-path"
+          className="gps-route-loader-path"
+          d="M40 140 C 90 140, 80 60, 140 70 S 200 140, 240 100 S 270 40, 285 40"
+        />
+        <circle className="gps-route-loader-runner" r="6">
+          <animateMotion dur="2.4s" repeatCount="indefinite" rotate="auto">
+            <mpath href="#gps-loader-path" />
+          </animateMotion>
+        </circle>
+        <g className="gps-route-loader-pin gps-route-loader-pin--start" transform="translate(40 140)">
+          <circle r="11" />
+          <text y="4">D</text>
+        </g>
+        <g className="gps-route-loader-pin gps-route-loader-pin--end" transform="translate(285 40)">
+          <circle r="11" />
+          <text y="4">?</text>
+        </g>
+      </svg>
+      <strong>Calculando la mejor ruta</strong>
+      <span className="gps-muted">{LOADING_STEPS[step]}</span>
     </div>
   );
 }

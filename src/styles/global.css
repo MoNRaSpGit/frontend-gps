@@ -610,3 +610,103 @@ button {
   flex-wrap: wrap;
   margin-top: 16px;
 }
+
+/* ---------------- Espera mientras se calcula la ruta (22/10/2026) ---------------- */
+/* Ocupa el mismo alto que el mapa, asi la ventana no salta al terminar. */
+.gps-route-loader {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  height: 320px;
+  margin-top: 6px;
+  border-radius: 10px;
+  text-align: center;
+  /* Fondo tipo "mapa": cuadricula suave + un brillo que pasa. */
+  background:
+    linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.65) 50%, transparent 70%) 0 0 / 220% 100%,
+    repeating-linear-gradient(0deg, transparent 0 27px, #e3e9f4 27px 28px),
+    repeating-linear-gradient(90deg, transparent 0 27px, #e3e9f4 27px 28px),
+    #f1f5fb;
+  animation: gps-loader-shine 1.8s linear infinite;
+}
+
+.gps-route-loader strong {
+  font-size: 16px;
+  color: var(--color-text);
+}
+
+.gps-route-loader-art {
+  width: min(300px, 90%);
+  height: auto;
+}
+
+.gps-route-loader-path {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 10 9;
+  animation: gps-loader-dash 0.9s linear infinite;
+  opacity: 0.85;
+}
+
+.gps-route-loader-runner {
+  fill: #ffffff;
+  stroke: var(--color-accent-dark);
+  stroke-width: 3;
+}
+
+.gps-route-loader-pin circle {
+  stroke: #ffffff;
+  stroke-width: 3;
+}
+
+.gps-route-loader-pin text {
+  fill: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.gps-route-loader-pin--start circle {
+  fill: var(--color-accent);
+}
+
+.gps-route-loader-pin--end circle {
+  fill: #16a34a;
+  animation: gps-loader-pulse 1.2s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+@keyframes gps-loader-shine {
+  to {
+    background-position: -220% 0, 0 0, 0 0, 0 0;
+  }
+}
+
+@keyframes gps-loader-dash {
+  to {
+    stroke-dashoffset: -19;
+  }
+}
+
+@keyframes gps-loader-pulse {
+  50% {
+    transform: scale(1.25);
+  }
+}
+
+/* Quien tiene el celular configurado con "reducir movimiento": sin animaciones. */
+@media (prefers-reduced-motion: reduce) {
+  .gps-route-loader,
+  .gps-route-loader-path,
+  .gps-route-loader-pin--end circle {
+    animation: none;
+  }
+
+  .gps-route-loader-runner {
+    display: none;
+  }
+}
