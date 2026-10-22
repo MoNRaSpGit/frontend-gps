@@ -26,28 +26,36 @@ type RouteState =
   // Se paso del limite del servicio: cartel grande, sin ruta real.
   | { kind: "quota"; message: string }
   // Cualquier otra falla: se muestra igual el mapa con lineas rectas.
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string }
+  // Vista previa sin calcular (no gasta llamadas).
+  | { kind: "preview" };
 
 // Ruta optima REAL (22/10/2026): el backend calcula el orden de visita y
 // el recorrido por calles con OpenRouteService. Abrir el mapa de nuevo con
 // los mismos clientes no gasta llamadas (el backend guarda la ruta).
+// calculate=false (vista previa de un repartidor): NO llama al servicio,
+// solo muestra los pines -- pedido explicito: la llamada se hace una sola
+// vez, para la ruta final.
 export function RouteMapModal({
   title,
   points,
   token,
+  calculate = true,
   onClose
 }: {
   title: string;
   points: RoutePoint[];
   token: string;
+  calculate?: boolean;
   onClose: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [state, setState] = useState<RouteState>({ kind: "loading" });
+  const [state, setState] = useState<RouteState>(calculate ? { kind: "loading" } : { kind: "preview" });
 
   const pointsKey = points.map((point) => point.id).join(",");
 
   useEffect(() => {
+    if (!calculate) return;
     let cancelled = false;
     computeRoute(
       token,
@@ -66,7 +74,7 @@ export function RouteMapModal({
     };
     // pointsKey resume los clientes: volver a pedir solo si cambian.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, pointsKey]);
+  }, [token, pointsKey, calculate]);
 
   // Orden de visita: el calculado si hay ruta real, si no el de la lista.
   const ordered =
@@ -129,6 +137,9 @@ export function RouteMapModal({
         ) : (
           <>
             {state.kind === "loading" && <p className="gps-muted gps-map-note">Calculando la mejor ruta…</p>}
+            {state.kind === "preview" && (
+              <p className="gps-muted gps-map-note">Vista previa de los clientes elegidos. El orden y el recorrido por calles se calculan en la ruta final.</p>
+            )}
             {state.kind === "ready" && (
               <p className="gps-muted gps-map-note">
                 Ruta óptima por calles: <strong>{state.route.distanceKm.toLocaleString("es-UY")} km</strong>, unos{" "}

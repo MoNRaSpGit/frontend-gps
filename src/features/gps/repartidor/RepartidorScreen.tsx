@@ -3,6 +3,7 @@ import { fetchClients, fetchFinalRoute, fetchMyPicks, fetchStatus, resetAllPicks
 import type { GpsClient, GpsFinalRoute, GpsPersona, GpsRepartidorStatus, GpsSession } from "../gps.types";
 import { RouteMapModal } from "./RouteMapModal";
 import type { RoutePoint } from "./RouteMapModal";
+import { GpsConfirmModal } from "../GpsConfirmModal";
 
 // Pedido explicito (20/10/2026): ya no hay una cuenta por persona -- el
 // login es generico y esta pantalla se renderiza una vez por pestaña
@@ -22,6 +23,9 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
   const [isEditing, setIsEditing] = useState(false);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [resettingAll, setResettingAll] = useState(false);
+  // Faltan repartidores por guardar: se pregunta antes de generar igual.
+  const [confirmingFinal, setConfirmingFinal] = useState(false);
+  const [loadingFinal, setLoadingFinal] = useState(false);
 
   function loadAll() {
     Promise.all([fetchClients(session.token, persona.key), fetchMyPicks(session.token, persona.key), fetchStatus(session.token)])
@@ -70,7 +74,7 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
         );
         loadAll();
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "No se pudo generar la ruta."))
+      .catch((err) => setError(err instanceof Error ? err.message : "No se pudo guardar la ruta."))
       .finally(() => setIsSubmitting(false));
   }
 
@@ -108,16 +112,31 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
       .finally(() => setResettingAll(false));
   }
 
+  // Ruta final (pedido explicito 22/10/2026): se puede generar apenas UN
+  // repartidor guardo su ruta. Si faltan otros, primero se pregunta.
   function handleVerRutaFinal() {
+    if (missing.length > 0) {
+      setConfirmingFinal(true);
+      return;
+    }
+    openFinalRoute();
+  }
+
+  function openFinalRoute() {
+    setLoadingFinal(true);
     fetchFinalRoute(session.token)
       .then((route) => {
         setFinalRoute(route);
-        if (route.ready) setShowFinalRoute(true);
+        setConfirmingFinal(false);
+        if (route.items.length > 0) setShowFinalRoute(true);
+        else setError("Todavía nadie guardó su ruta.");
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "No se pudo cargar la ruta final."));
+      .catch((err) => setError(err instanceof Error ? err.message : "No se pudo cargar la ruta final."))
+      .finally(() => setLoadingFinal(false));
   }
 
-  const allConfirmed = status.length > 0 && status.every((entry) => entry.confirmed);
+  const anyConfirmed = status.some((entry) => entry.confirmed);
+  const missing = status.filter((entry) => !entry.confirmed).map((entry) => entry.fullName ?? entry.username);
 
   return (
     <section className="gps-screen">
@@ -125,7 +144,7 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
         <h1>Clientes de {persona.fullName}</h1>
         {confirmed && previewPoints && (
           <button type="button" className="gps-button-secondary" onClick={() => setPreviewPoints(previewPoints)}>
-            Ver ruta preliminar
+            Ver en el mapa
           </button>
         )}
       </header>
@@ -135,7 +154,7 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
       <p className="gps-muted">
         {confirmed
           ? `Ya confirmó su selección (${selectedIds.size} cliente(s)). Tocá "Editar selección" si se equivocó.`
-          : "Buscá y tildá a los clientes a los que le vendió hoy, y generá la ruta."}
+          : "Buscá y tildá a los clientes a los que le vendió hoy, y guardá la ruta."}
       </p>
 
       <input
@@ -177,7 +196,7 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
             </button>
           )}
           <button type="button" className="gps-button" onClick={handleGenerarRuta} disabled={confirmed || isSubmitting || selectedIds.size === 0}>
-            {confirmed ? "Ruta generada" : isSubmitting ? "Generando…" : "Generar ruta"}
+            {confirmed ? "Ruta guardada" : isSubmitting ? "Guardando…" : "Guardar mi ruta"}
           </button>
         </div>
       </div>
@@ -211,19 +230,31 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
         ))}
       </ul>
 
-      {allConfirmed ? (
-        <button type="button" className="gps-button" onClick={handleVerRutaFinal}>
-          Ver ruta final
+      {anyConfirmed ? (
+        <button type="button" className="gps-button" onClick={handleVerRutaFinal} disabled={loadingFinal}>
+          {loadingFinal ? "Cargando…" : "Generar ruta final"}
         </button>
       ) : (
-        <p className="gps-muted">La ruta final se habilita cuando las 4 confirmaron su selección.</p>
+        <p className="gps-muted">La ruta final se habilita apenas un repartidor guarde su ruta.</p>
+      )}
+
+      {confirmingFinal && (
+        <GpsConfirmModal
+          title="Faltan rutas"
+          message={`Todavía no guardaron su ruta: ${missing.join(", ")}. ¿Generar igual la ruta final con las que ya están?`}
+          confirmLabel="Sí, generar"
+          busy={loadingFinal}
+          onConfirm={openFinalRoute}
+          onCancel={() => setConfirmingFinal(false)}
+        />
       )}
 
       {previewPoints && !showFinalRoute && (
         <RouteMapModal
-          title={`Ruta preliminar de ${persona.fullName}`}
+          title={`Clientes de ${persona.fullName}`}
           points={previewPoints}
           token={session.token}
+          calculate={false}
           onClose={() => setPreviewPoints(null)}
         />
       )}

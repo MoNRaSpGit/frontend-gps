@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchClients, fetchFinalRoute, fetchStatus, fetchUsage, resetAllPicks } from "../gps.client";
 import type { GpsClient, GpsFinalRoute, GpsRepartidorStatus, GpsSession, GpsUsage } from "../gps.types";
 import { RouteMapModal } from "../repartidor/RouteMapModal";
+import { GpsConfirmModal } from "../GpsConfirmModal";
 
 export function AdminDashboard({ session }: { session: GpsSession }) {
   const [clients, setClients] = useState<GpsClient[] | null>(null);
@@ -12,6 +13,7 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [usage, setUsage] = useState<GpsUsage | null>(null);
+  const [confirmingFinal, setConfirmingFinal] = useState(false);
 
   function loadAll() {
     Promise.all([fetchClients(session.token), fetchStatus(session.token), fetchFinalRoute(session.token)])
@@ -34,6 +36,15 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
   }, [session.token]);
 
   const confirmedCount = status?.filter((entry) => entry.confirmed).length ?? 0;
+  const missing = status?.filter((entry) => !entry.confirmed).map((entry) => entry.fullName ?? entry.username) ?? [];
+  // Hay algo para la ruta final apenas un repartidor guardo la suya
+  // (pedido explicito 22/10/2026), aunque falten otros.
+  const hasFinalItems = (finalRoute?.items.length ?? 0) > 0;
+
+  function handleOpenFinalRoute() {
+    if (missing.length > 0) setConfirmingFinal(true);
+    else setShowFinalRoute(true);
+  }
   const totalPicks = status?.reduce((sum, entry) => sum + entry.pickCount, 0) ?? 0;
 
   function handleResetAll() {
@@ -104,7 +115,7 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
         </div>
         <div className="gps-stat-card">
           <span className="gps-muted">Ruta final</span>
-          <strong>{finalRoute?.ready ? "Lista" : "En espera"}</strong>
+          <strong>{finalRoute?.ready ? "Lista" : hasFinalItems ? "Parcial" : "En espera"}</strong>
         </div>
       </div>
 
@@ -137,9 +148,9 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
         {status === null && !error && <p className="gps-muted">Cargando…</p>}
       </ul>
 
-      {finalRoute?.ready && (
+      {hasFinalItems && finalRoute && (
         <>
-          <h2 className="gps-section-title">Ruta final combinada</h2>
+          <h2 className="gps-section-title">Ruta final combinada{finalRoute.ready ? "" : " (parcial)"}</h2>
           <div className="gps-table-wrap">
             <table className="gps-table">
               <thead>
@@ -160,13 +171,26 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
               </tbody>
             </table>
           </div>
-          <button type="button" className="gps-button" onClick={() => setShowFinalRoute(true)}>
-            Ver en el mapa
+          <button type="button" className="gps-button" onClick={handleOpenFinalRoute}>
+            Generar ruta final
           </button>
         </>
       )}
 
-      {showFinalRoute && finalRoute?.ready && (
+      {confirmingFinal && (
+        <GpsConfirmModal
+          title="Faltan rutas"
+          message={`Todavía no guardaron su ruta: ${missing.join(", ")}. ¿Generar igual la ruta final con las que ya están?`}
+          confirmLabel="Sí, generar"
+          onConfirm={() => {
+            setConfirmingFinal(false);
+            setShowFinalRoute(true);
+          }}
+          onCancel={() => setConfirmingFinal(false)}
+        />
+      )}
+
+      {showFinalRoute && hasFinalItems && finalRoute && (
         <RouteMapModal
           title="Ruta final combinada"
           token={session.token}

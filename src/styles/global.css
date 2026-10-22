@@ -593,3 +593,20 @@ button {
 .gps-route-start {
   margin: 12px 0 0;
 }
+
+/* Confirmacion propia ("Faltan rutas, ¿generar igual?"). */
+.gps-confirm-card {
+  max-width: 420px;
+}
+
+.gps-confirm-card h2 {
+  margin: 0 0 8px;
+}
+
+.gps-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
