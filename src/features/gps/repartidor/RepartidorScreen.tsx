@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchClients, fetchFinalRoute, fetchMyPicks, fetchStatus, resetAllPicks, resetPicks, submitPicks } from "../gps.client";
 import type { GpsClient, GpsFinalRoute, GpsPersona, GpsRepartidorStatus, GpsSession } from "../gps.types";
 import { RouteMapModal } from "./RouteMapModal";
@@ -27,11 +27,22 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
   const [confirmingFinal, setConfirmingFinal] = useState(false);
   const [loadingFinal, setLoadingFinal] = useState(false);
 
+  // Bug 22/10/2026 ("le doy a editar y se me desmarcan todos los
+  // clientes"): la recarga automatica cada 15 s pisaba lo tildado en
+  // pantalla con lo guardado en el servidor -- y al tocar "Editar
+  // selección" lo guardado queda vacio, asi que desmarcaba todo. Ahora lo
+  // del servidor solo se aplica al entrar a la pestaña o cuando la ruta
+  // esta guardada; mientras se edita, manda lo que esta en pantalla.
+  const selectionLoadedRef = useRef(false);
+
   function loadAll() {
     Promise.all([fetchClients(session.token, persona.key), fetchMyPicks(session.token, persona.key), fetchStatus(session.token)])
       .then(([clientsResult, myPicks, statusResult]) => {
         setClients(clientsResult);
-        setSelectedIds(new Set(myPicks.clientIds));
+        if (!selectionLoadedRef.current || myPicks.clientIds.length > 0) {
+          setSelectedIds(new Set(myPicks.clientIds));
+          selectionLoadedRef.current = true;
+        }
         setConfirmed(myPicks.clientIds.length > 0 && statusResult.some((entry) => entry.username === persona.key && entry.confirmed));
         setStatus(statusResult);
       })
@@ -104,6 +115,8 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
     resetAllPicks(session.token)
       .then(() => {
         setConfirmingReset(false);
+        // Reiniciar si limpia lo tildado (es lo que se pidio).
+        setSelectedIds(new Set());
         setPreviewPoints(null);
         setShowFinalRoute(false);
         loadAll();
