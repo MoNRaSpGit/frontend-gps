@@ -211,10 +211,15 @@ export function RouteMapModal({
                   {editingIds.map((id, index) => {
                     const point = points.find((candidate) => candidate.id === id);
                     if (!point) return null;
+                    // Numero de parada visible al mover (pedido 22/10/2026):
+                    // el nuevo y, si cambio, el que tenia en la ruta.
+                    const before = ordered.findIndex((candidate) => candidate.id === id) + 1;
                     return (
                       <li key={id}>
+                        <span className="gps-route-edit-number">{index + 1}</span>
                         <span className="gps-route-edit-text">
                           {point.tag ? <strong>[{point.tag}]</strong> : null} {point.title} — {point.subtitle}
+                          {before !== index + 1 && <span className="gps-route-edit-before"> (antes {before})</span>}
                         </span>
                         <span className="gps-route-edit-actions">
                           <button type="button" className="gps-route-edit-btn" onClick={() => moveEditing(index, -1)} disabled={index === 0 || savingOrder} aria-label="Subir">

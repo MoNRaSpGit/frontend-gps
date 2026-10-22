@@ -766,3 +766,30 @@ button {
   opacity: 0.35;
   cursor: default;
 }
+
+/* Numero de parada mientras se edita el orden (la lista en flex pierde el
+   numerado del <ol>). */
+.gps-route-order--editing {
+  padding-left: 0;
+  list-style: none;
+}
+
+.gps-route-edit-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.gps-route-edit-before {
+  color: var(--color-muted, #6b7280);
+  font-size: 0.85rem;
+  font-style: italic;
+}
