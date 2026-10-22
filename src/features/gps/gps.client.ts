@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../../shared/config/api";
-import type { GpsClient, GpsFinalRoute, GpsPersona, GpsRepartidorStatus, GpsRoute, GpsSession, GpsUsage, GpsUser } from "./gps.types";
+import type { GpsClient, GpsFinalRoute, GpsGeneratedFinalRoute, GpsPersona, GpsRepartidorStatus, GpsRoute, GpsSession, GpsUsage, GpsUser } from "./gps.types";
 
 // El backend corto el servicio de rutas por llegar al limite (429): la
 // pantalla muestra el cartel de "comunicarse con el proveedor".
@@ -84,4 +84,14 @@ export function computeRoute(token: string, clientIds: number[]) {
 
 export function fetchUsage(token: string) {
   return request<GpsUsage>("/usage", token);
+}
+
+// Genera la ruta final con lo que ya guardaron, la guarda y reinicia las
+// rutas de todos (arranca de cero el siguiente reparto).
+export function generateFinalRoute(token: string) {
+  return request<GpsGeneratedFinalRoute>("/final/generate", token, { method: "POST" });
+}
+
+export function fetchLastFinalRoute(token: string) {
+  return request<{ route: GpsGeneratedFinalRoute | null }>("/final/last", token);
 }

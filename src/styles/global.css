@@ -710,3 +710,17 @@ button {
     display: none;
   }
 }
+
+/* Acceso a la ultima ruta final generada (22/10/2026). */
+.gps-last-final {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}

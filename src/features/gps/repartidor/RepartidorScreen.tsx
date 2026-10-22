@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchClients, fetchFinalRoute, fetchMyPicks, fetchStatus, resetAllPicks, resetPicks, submitPicks } from "../gps.client";
-import type { GpsClient, GpsFinalRoute, GpsPersona, GpsRepartidorStatus, GpsSession } from "../gps.types";
+import { fetchClients, fetchLastFinalRoute, fetchMyPicks, fetchStatus, generateFinalRoute, resetAllPicks, resetPicks, submitPicks } from "../gps.client";
+import { finalRoutePoints, formatGeneratedAt } from "../finalRoutePoints";
+import type { GpsClient, GpsGeneratedFinalRoute, GpsPersona, GpsRepartidorStatus, GpsSession } from "../gps.types";
 import { RouteMapModal } from "./RouteMapModal";
 import type { RoutePoint } from "./RouteMapModal";
 import { GpsConfirmModal } from "../GpsConfirmModal";
@@ -15,7 +16,8 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [confirmed, setConfirmed] = useState(false);
   const [status, setStatus] = useState<GpsRepartidorStatus[]>([]);
-  const [finalRoute, setFinalRoute] = useState<GpsFinalRoute | null>(null);
+  // Ultima ruta final generada (queda guardada aunque se reinicien las rutas).
+  const [finalRoute, setFinalRoute] = useState<GpsGeneratedFinalRoute | null>(null);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewPoints, setPreviewPoints] = useState<RoutePoint[] | null>(null);
@@ -34,17 +36,29 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
   // del servidor solo se aplica al entrar a la pestaña o cuando la ruta
   // esta guardada; mientras se edita, manda lo que esta en pantalla.
   const selectionLoadedRef = useRef(false);
+  // Si la ruta estaba guardada y de golpe el servidor ya no la tiene, es
+  // porque alguien genero la ruta final (o reinicio): se arranca de cero.
+  const confirmedRef = useRef(false);
 
   function loadAll() {
-    Promise.all([fetchClients(session.token, persona.key), fetchMyPicks(session.token, persona.key), fetchStatus(session.token)])
-      .then(([clientsResult, myPicks, statusResult]) => {
+    Promise.all([
+      fetchClients(session.token, persona.key),
+      fetchMyPicks(session.token, persona.key),
+      fetchStatus(session.token),
+      fetchLastFinalRoute(session.token)
+    ])
+      .then(([clientsResult, myPicks, statusResult, lastFinal]) => {
         setClients(clientsResult);
-        if (!selectionLoadedRef.current || myPicks.clientIds.length > 0) {
+        const serverConfirmed =
+          myPicks.clientIds.length > 0 && statusResult.some((entry) => entry.username === persona.key && entry.confirmed);
+        if (!selectionLoadedRef.current || myPicks.clientIds.length > 0 || (confirmedRef.current && !serverConfirmed)) {
           setSelectedIds(new Set(myPicks.clientIds));
           selectionLoadedRef.current = true;
         }
-        setConfirmed(myPicks.clientIds.length > 0 && statusResult.some((entry) => entry.username === persona.key && entry.confirmed));
+        confirmedRef.current = serverConfirmed;
+        setConfirmed(serverConfirmed);
         setStatus(statusResult);
+        setFinalRoute(lastFinal.route);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "No se pudieron cargar los datos."));
   }
@@ -77,6 +91,7 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
     setError("");
     submitPicks(session.token, persona.key, Array.from(selectedIds))
       .then(() => {
+        confirmedRef.current = true;
         setConfirmed(true);
         setPreviewPoints(
           clients
@@ -99,6 +114,7 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
     setError("");
     resetPicks(session.token, persona.key)
       .then(() => {
+        confirmedRef.current = false;
         setConfirmed(false);
         setPreviewPoints(null);
         loadAll();
@@ -135,16 +151,26 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
     openFinalRoute();
   }
 
+  // Genera la ruta final, la guarda y reinicia las rutas de todos (pedido
+  // explicito 22/10/2026: "que arranque de 0"). La ruta generada se sigue
+  // pudiendo ver con "Ver última ruta final".
   function openFinalRoute() {
     setLoadingFinal(true);
-    fetchFinalRoute(session.token)
+    generateFinalRoute(session.token)
       .then((route) => {
         setFinalRoute(route);
         setConfirmingFinal(false);
-        if (route.items.length > 0) setShowFinalRoute(true);
-        else setError("Todavía nadie guardó su ruta.");
+        setShowFinalRoute(true);
+        confirmedRef.current = false;
+        setConfirmed(false);
+        setSelectedIds(new Set());
+        setPreviewPoints(null);
+        loadAll();
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "No se pudo cargar la ruta final."))
+      .catch((err) => {
+        setConfirmingFinal(false);
+        setError(err instanceof Error ? err.message : "No se pudo generar la ruta final.");
+      })
       .finally(() => setLoadingFinal(false));
   }
 
@@ -251,10 +277,21 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
         <p className="gps-muted">La ruta final se habilita apenas un repartidor guarde su ruta.</p>
       )}
 
+      {finalRoute && (
+        <div className="gps-last-final">
+          <span className="gps-muted">
+            Última ruta final: {formatGeneratedAt(finalRoute.createdAt)} · {finalRoute.items.length} cliente(s)
+          </span>
+          <button type="button" className="gps-button-secondary" onClick={() => setShowFinalRoute(true)}>
+            Ver última ruta final
+          </button>
+        </div>
+      )}
+
       {confirmingFinal && (
         <GpsConfirmModal
           title="Faltan rutas"
-          message={`Todavía no guardaron su ruta: ${missing.join(", ")}. ¿Generar igual la ruta final con las que ya están?`}
+          message={`Todavía no guardaron su ruta: ${missing.join(", ")}. ¿Generar igual la ruta final con las que ya están? Después de generarla, las rutas de todos arrancan de cero.`}
           confirmLabel="Sí, generar"
           busy={loadingFinal}
           onConfirm={openFinalRoute}
@@ -274,16 +311,9 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
 
       {showFinalRoute && finalRoute && (
         <RouteMapModal
-          title="Ruta final combinada"
+          title={`Ruta final · ${formatGeneratedAt(finalRoute.createdAt)}`}
           token={session.token}
-          points={finalRoute.items.map((item) => ({
-            id: item.client.id,
-            lat: item.client.lat,
-            lng: item.client.lng,
-            title: item.client.name,
-            subtitle: item.client.address,
-            tag: item.repartidorName ?? item.repartidorUsername
-          }))}
+          points={finalRoutePoints(finalRoute.items)}
           onClose={() => setShowFinalRoute(false)}
         />
       )}

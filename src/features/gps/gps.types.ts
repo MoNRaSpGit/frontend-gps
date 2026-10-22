@@ -38,3 +38,12 @@ export type GpsUsageEntry = {
 };
 
 export type GpsUsage = { day: string; providerPhone: string; services: GpsUsageEntry[] };
+
+// Ruta final ya generada (queda guardada aunque se reinicien las rutas).
+export type GpsGeneratedFinalRoute = {
+  id: number;
+  dayLabel: string;
+  createdAt: string;
+  items: GpsFinalRouteItem[];
+  missing: string[];
+};

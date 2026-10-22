@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { fetchClients, fetchFinalRoute, fetchStatus, fetchUsage, resetAllPicks } from "../gps.client";
-import type { GpsClient, GpsFinalRoute, GpsRepartidorStatus, GpsSession, GpsUsage } from "../gps.types";
+import { fetchClients, fetchFinalRoute, fetchLastFinalRoute, fetchStatus, fetchUsage, generateFinalRoute, resetAllPicks } from "../gps.client";
+import { finalRoutePoints, formatGeneratedAt } from "../finalRoutePoints";
+import type { GpsClient, GpsFinalRoute, GpsGeneratedFinalRoute, GpsRepartidorStatus, GpsSession, GpsUsage } from "../gps.types";
 import { RouteMapModal } from "../repartidor/RouteMapModal";
 import { GpsConfirmModal } from "../GpsConfirmModal";
 
@@ -14,6 +15,9 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
   const [resetting, setResetting] = useState(false);
   const [usage, setUsage] = useState<GpsUsage | null>(null);
   const [confirmingFinal, setConfirmingFinal] = useState(false);
+  // Ultima ruta final generada (lo que se dibuja en el mapa).
+  const [lastFinal, setLastFinal] = useState<GpsGeneratedFinalRoute | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   function loadAll() {
     Promise.all([fetchClients(session.token), fetchStatus(session.token), fetchFinalRoute(session.token)])
@@ -27,6 +31,9 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
     fetchUsage(session.token)
       .then(setUsage)
       .catch(() => setUsage(null));
+    fetchLastFinalRoute(session.token)
+      .then((result) => setLastFinal(result.route))
+      .catch(() => undefined);
   }
 
   useEffect(() => {
@@ -43,7 +50,26 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
 
   function handleOpenFinalRoute() {
     if (missing.length > 0) setConfirmingFinal(true);
-    else setShowFinalRoute(true);
+    else handleGenerate();
+  }
+
+  // Genera la ruta final, la guarda y reinicia las rutas de todos (pedido
+  // explicito 22/10/2026: "que arranque de 0").
+  function handleGenerate() {
+    setGenerating(true);
+    setError("");
+    generateFinalRoute(session.token)
+      .then((route) => {
+        setLastFinal(route);
+        setConfirmingFinal(false);
+        setShowFinalRoute(true);
+        loadAll();
+      })
+      .catch((err) => {
+        setConfirmingFinal(false);
+        setError(err instanceof Error ? err.message : "No se pudo generar la ruta final.");
+      })
+      .finally(() => setGenerating(false));
   }
   const totalPicks = status?.reduce((sum, entry) => sum + entry.pickCount, 0) ?? 0;
 
@@ -171,37 +197,41 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
               </tbody>
             </table>
           </div>
-          <button type="button" className="gps-button" onClick={handleOpenFinalRoute}>
-            Generar ruta final
+          <button type="button" className="gps-button" onClick={handleOpenFinalRoute} disabled={generating}>
+            {generating ? "Generando…" : "Generar ruta final"}
           </button>
+          <p className="gps-muted">Al generarla, las rutas de todos los repartidores arrancan de cero.</p>
         </>
       )}
 
       {confirmingFinal && (
         <GpsConfirmModal
           title="Faltan rutas"
-          message={`Todavía no guardaron su ruta: ${missing.join(", ")}. ¿Generar igual la ruta final con las que ya están?`}
+          message={`Todavía no guardaron su ruta: ${missing.join(", ")}. ¿Generar igual la ruta final con las que ya están? Después de generarla, las rutas de todos arrancan de cero.`}
           confirmLabel="Sí, generar"
-          onConfirm={() => {
-            setConfirmingFinal(false);
-            setShowFinalRoute(true);
-          }}
+          busy={generating}
+          onConfirm={handleGenerate}
           onCancel={() => setConfirmingFinal(false)}
         />
       )}
 
-      {showFinalRoute && hasFinalItems && finalRoute && (
+      {lastFinal && (
+        <div className="gps-last-final">
+          <span className="gps-muted">
+            Última ruta final: {formatGeneratedAt(lastFinal.createdAt)} · {lastFinal.items.length} cliente(s)
+            {lastFinal.missing.length > 0 ? ` · sin: ${lastFinal.missing.join(", ")}` : ""}
+          </span>
+          <button type="button" className="gps-button-secondary" onClick={() => setShowFinalRoute(true)}>
+            Ver última ruta final
+          </button>
+        </div>
+      )}
+
+      {showFinalRoute && lastFinal && (
         <RouteMapModal
-          title="Ruta final combinada"
+          title={`Ruta final · ${formatGeneratedAt(lastFinal.createdAt)}`}
           token={session.token}
-          points={finalRoute.items.map((item) => ({
-            id: item.client.id,
-            lat: item.client.lat,
-            lng: item.client.lng,
-            title: item.client.name,
-            subtitle: item.client.address,
-            tag: item.repartidorName ?? item.repartidorUsername
-          }))}
+          points={finalRoutePoints(lastFinal.items)}
           onClose={() => setShowFinalRoute(false)}
         />
       )}
