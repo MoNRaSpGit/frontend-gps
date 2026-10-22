@@ -895,3 +895,102 @@ button {
 .gps-assign-remove {
   flex-shrink: 0;
 }
+
+/* Encabezado con navegacion (Operarios / Clientes) e icono de usuario
+   (22/10/2026). */
+.gps-topbar {
+  gap: 12px;
+  padding: 10px 16px;
+}
+
+.gps-topbar-brand {
+  flex-shrink: 0;
+}
+
+.gps-topnav {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gps-topnav button {
+  padding: 8px 14px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 8px 8px 0 0;
+  background: none;
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.gps-topnav button.is-active {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.gps-user-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.gps-user-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.gps-user-button[aria-expanded="true"] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.gps-user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  min-width: 200px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+}
+
+.gps-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gps-user-logout {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--color-danger);
+  font-weight: 600;
+  text-align: left;
+}
+
+.gps-user-logout:hover {
+  background: #fef2f2;
+}
+
+@media (max-width: 420px) {
+  .gps-topnav button {
+    padding: 8px 10px;
+  }
+}

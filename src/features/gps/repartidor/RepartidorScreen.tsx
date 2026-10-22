@@ -221,7 +221,12 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
             </label>
           </li>
         ))}
-        {filteredClients.length === 0 && <p className="gps-muted">Sin resultados para "{search}".</p>}
+        {filteredClients.length === 0 &&
+          (clients.length === 0 ? (
+            <p className="gps-muted">Todavía no tiene clientes asignados. Se los das desde la sección Clientes.</p>
+          ) : (
+            <p className="gps-muted">Sin resultados para "{search}".</p>
+          ))}
       </ul>
 
       <div className="gps-bottom-bar">
