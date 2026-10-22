@@ -724,3 +724,45 @@ button {
   border-radius: 12px;
   background: var(--color-surface);
 }
+
+/* Editar el orden de la ruta final (23/10/2026). */
+.gps-route-order--editing li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.gps-route-edit-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.gps-route-edit-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.gps-route-edit-btn {
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.gps-route-edit-btn--wide {
+  padding: 0 10px;
+  font-size: 0.85rem;
+}
+
+.gps-route-edit-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

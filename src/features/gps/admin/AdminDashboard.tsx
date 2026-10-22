@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchClients, fetchFinalRoute, fetchLastFinalRoute, fetchStatus, fetchUsage, generateFinalRoute, resetAllPicks } from "../gps.client";
-import { finalRoutePoints, formatGeneratedAt } from "../finalRoutePoints";
+import { fetchClients, fetchFinalRoute, fetchLastFinalRoute, fetchStatus, fetchUsage, generateFinalRoute, resetAllPicks, saveFinalRouteOrder } from "../gps.client";
+import { formatGeneratedAt, generatedRouteMap } from "../finalRoutePoints";
 import type { GpsClient, GpsFinalRoute, GpsGeneratedFinalRoute, GpsRepartidorStatus, GpsSession, GpsUsage } from "../gps.types";
 import { RouteMapModal } from "../repartidor/RouteMapModal";
 import { GpsConfirmModal } from "../GpsConfirmModal";
@@ -231,7 +231,8 @@ export function AdminDashboard({ session }: { session: GpsSession }) {
         <RouteMapModal
           title={`Ruta final · ${formatGeneratedAt(lastFinal.createdAt)}`}
           token={session.token}
-          points={finalRoutePoints(lastFinal.items)}
+          {...generatedRouteMap(lastFinal)}
+          onSaveOrder={(clientIds) => saveFinalRouteOrder(session.token, lastFinal.id, clientIds).then(setLastFinal)}
           onClose={() => setShowFinalRoute(false)}
         />
       )}

@@ -46,4 +46,6 @@ export type GpsGeneratedFinalRoute = {
   createdAt: string;
   items: GpsFinalRouteItem[];
   missing: string[];
+  // Orden de visita elegido a mano (null = el optimo calculado).
+  customOrder: number[] | null;
 };

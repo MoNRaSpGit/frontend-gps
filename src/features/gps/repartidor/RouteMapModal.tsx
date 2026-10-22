@@ -41,25 +41,39 @@ export function RouteMapModal({
   points,
   token,
   calculate = true,
+  keepOrder = false,
+  onSaveOrder,
   onClose
 }: {
   title: string;
   points: RoutePoint[];
   token: string;
   calculate?: boolean;
+  // true = los puntos ya vienen en el orden elegido a mano.
+  keepOrder?: boolean;
+  // Si viene, se puede editar el orden y rehacer la ruta (ruta final).
+  onSaveOrder?: (clientIds: number[]) => Promise<void>;
   onClose: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<RouteState>(calculate ? { kind: "loading" } : { kind: "preview" });
 
-  const pointsKey = points.map((point) => point.id).join(",");
+  // Edicion del orden (23/10/2026, pedido explicito: p.ej. el cliente 2
+  // todavia no abrio y se quiere pasar para despues). null = sin editar.
+  const [editingIds, setEditingIds] = useState<number[] | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [orderError, setOrderError] = useState("");
+
+  const pointsKey = `${keepOrder ? "fijo" : "opt"}:${points.map((point) => point.id).join(",")}`;
 
   useEffect(() => {
     if (!calculate) return;
     let cancelled = false;
+    setState({ kind: "loading" });
     computeRoute(
       token,
-      points.map((point) => point.id)
+      points.map((point) => point.id),
+      keepOrder
     )
       .then((route) => {
         if (!cancelled) setState({ kind: "ready", route });
@@ -81,6 +95,41 @@ export function RouteMapModal({
     state.kind === "ready"
       ? state.route.orderedClientIds.map((id) => points.find((point) => point.id === id)).filter((point): point is RoutePoint => Boolean(point))
       : points;
+
+  function moveEditing(index: number, delta: number) {
+    setEditingIds((current) => {
+      if (!current) return current;
+      const target = index + delta;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
+  function sendToEnd(index: number) {
+    setEditingIds((current) => {
+      if (!current) return current;
+      const next = [...current];
+      const [moved] = next.splice(index, 1);
+      return [...next, moved];
+    });
+  }
+
+  // Rehacer ruta: guarda el orden y el mapa se vuelve a dibujar con ese
+  // orden (1 llamada de recorrido por calles, ninguna de optimizacion).
+  function handleRedo() {
+    if (!editingIds || !onSaveOrder) return;
+    setSavingOrder(true);
+    setOrderError("");
+    onSaveOrder(editingIds)
+      .then(() => setEditingIds(null))
+      .catch((error) => setOrderError(error instanceof Error ? error.message : "No se pudo guardar el orden."))
+      .finally(() => setSavingOrder(false));
+  }
+
+  const canEdit = Boolean(onSaveOrder) && (state.kind === "ready" || state.kind === "error") && ordered.length > 1;
+  const orderChanged = editingIds !== null && editingIds.join(",") !== ordered.map((point) => point.id).join(",");
 
   useEffect(() => {
     if (!containerRef.current || state.kind === "loading" || state.kind === "quota") return;
@@ -142,7 +191,7 @@ export function RouteMapModal({
             )}
             {state.kind === "ready" && (
               <p className="gps-muted gps-map-note">
-                Ruta óptima por calles: <strong>{state.route.distanceKm.toLocaleString("es-UY")} km</strong>, unos{" "}
+                {keepOrder ? "Ruta por calles en el orden elegido" : "Ruta óptima por calles"}: <strong>{state.route.distanceKm.toLocaleString("es-UY")} km</strong>, unos{" "}
                 <strong>{state.route.durationMin} min</strong> de manejo (sin contar las paradas).
               </p>
             )}
@@ -155,13 +204,70 @@ export function RouteMapModal({
             {/* El deposito va aparte de la lista numerada: asi el numero de
                 cada cliente coincide con el del pin en el mapa. */}
             <p className="gps-muted gps-route-start">Salida: {DEPOT.name}</p>
-            <ol className="gps-route-order">
-              {ordered.map((point) => (
-                <li key={point.id}>
-                  {point.tag ? <strong>[{point.tag}]</strong> : null} {point.title} — {point.subtitle}
-                </li>
-              ))}
-            </ol>
+            {editingIds ? (
+              <>
+                <p className="gps-muted">Cambiá el orden de las paradas y tocá “Rehacer ruta”.</p>
+                <ol className="gps-route-order gps-route-order--editing">
+                  {editingIds.map((id, index) => {
+                    const point = points.find((candidate) => candidate.id === id);
+                    if (!point) return null;
+                    return (
+                      <li key={id}>
+                        <span className="gps-route-edit-text">
+                          {point.tag ? <strong>[{point.tag}]</strong> : null} {point.title} — {point.subtitle}
+                        </span>
+                        <span className="gps-route-edit-actions">
+                          <button type="button" className="gps-route-edit-btn" onClick={() => moveEditing(index, -1)} disabled={index === 0 || savingOrder} aria-label="Subir">
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="gps-route-edit-btn"
+                            onClick={() => moveEditing(index, 1)}
+                            disabled={index === editingIds.length - 1 || savingOrder}
+                            aria-label="Bajar"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            className="gps-route-edit-btn gps-route-edit-btn--wide"
+                            onClick={() => sendToEnd(index)}
+                            disabled={index === editingIds.length - 1 || savingOrder}
+                          >
+                            Al final
+                          </button>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+                {orderError && <p className="gps-error">{orderError}</p>}
+                <div className="gps-confirm-actions">
+                  <button type="button" className="gps-button-secondary" onClick={() => setEditingIds(null)} disabled={savingOrder}>
+                    Cancelar
+                  </button>
+                  <button type="button" className="gps-button" onClick={handleRedo} disabled={!orderChanged || savingOrder}>
+                    {savingOrder ? "Rehaciendo…" : "Rehacer ruta"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <ol className="gps-route-order">
+                  {ordered.map((point) => (
+                    <li key={point.id}>
+                      {point.tag ? <strong>[{point.tag}]</strong> : null} {point.title} — {point.subtitle}
+                    </li>
+                  ))}
+                </ol>
+                {canEdit && (
+                  <button type="button" className="gps-button-secondary" onClick={() => setEditingIds(ordered.map((point) => point.id))}>
+                    Editar orden
+                  </button>
+                )}
+              </>
+            )}
           </>
         )}
       </div>

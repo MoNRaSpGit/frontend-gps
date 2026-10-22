@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchClients, fetchLastFinalRoute, fetchMyPicks, fetchStatus, generateFinalRoute, resetAllPicks, resetPicks, submitPicks } from "../gps.client";
-import { finalRoutePoints, formatGeneratedAt } from "../finalRoutePoints";
+import { fetchClients, fetchLastFinalRoute, fetchMyPicks, fetchStatus, generateFinalRoute, resetAllPicks, resetPicks, saveFinalRouteOrder, submitPicks } from "../gps.client";
+import { formatGeneratedAt, generatedRouteMap } from "../finalRoutePoints";
 import type { GpsClient, GpsGeneratedFinalRoute, GpsPersona, GpsRepartidorStatus, GpsSession } from "../gps.types";
 import { RouteMapModal } from "./RouteMapModal";
 import type { RoutePoint } from "./RouteMapModal";
@@ -313,7 +313,8 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
         <RouteMapModal
           title={`Ruta final · ${formatGeneratedAt(finalRoute.createdAt)}`}
           token={session.token}
-          points={finalRoutePoints(finalRoute.items)}
+          {...generatedRouteMap(finalRoute)}
+          onSaveOrder={(clientIds) => saveFinalRouteOrder(session.token, finalRoute.id, clientIds).then(setFinalRoute)}
           onClose={() => setShowFinalRoute(false)}
         />
       )}

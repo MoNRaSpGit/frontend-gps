@@ -78,8 +78,14 @@ export function fetchFinalRoute(token: string) {
   return request<GpsFinalRoute>("/picks/final", token);
 }
 
-export function computeRoute(token: string, clientIds: number[]) {
-  return request<GpsRoute>("/route", token, { method: "POST", body: JSON.stringify({ clientIds }) });
+// keepOrder: respeta el orden dado (no optimiza, solo dibuja por calles).
+export function computeRoute(token: string, clientIds: number[], keepOrder = false) {
+  return request<GpsRoute>("/route", token, { method: "POST", body: JSON.stringify({ clientIds, keepOrder }) });
+}
+
+// Guarda el orden editado a mano de una ruta final ya generada.
+export function saveFinalRouteOrder(token: string, routeId: number, clientIds: number[]) {
+  return request<GpsGeneratedFinalRoute>("/final/order", token, { method: "POST", body: JSON.stringify({ routeId, clientIds }) });
 }
 
 export function fetchUsage(token: string) {
