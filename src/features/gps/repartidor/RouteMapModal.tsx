@@ -6,10 +6,10 @@ import type { GpsRoute } from "../gps.types";
 
 export type RoutePoint = { id: number; lat: number; lng: number; title: string; subtitle: string; tag?: string };
 
-// Deposito/punto de partida ficticio (centro de Montevideo), para que la
-// ruta siempre arranque del mismo lugar. El backend usa el mismo punto
+// Punto de partida: la distribuidora en Olimpia Pintos 86, Tacuarembo
+// (22/10/2026, "por ahora"). El backend usa el mismo punto
 // (gps-routing.service.ts).
-const DEPOT = { name: "Depósito", lat: -34.9011, lng: -56.1645 };
+const DEPOT = { name: "Distribuidora — Olimpia Pintos 86", lat: -31.714127, lng: -55.989548 };
 
 function numberedIcon(label: string, color: string) {
   return L.divIcon({
@@ -154,7 +154,7 @@ export function RouteMapModal({
             {state.kind !== "loading" && <div ref={containerRef} className="gps-map-container" />}
             {/* El deposito va aparte de la lista numerada: asi el numero de
                 cada cliente coincide con el del pin en el mapa. */}
-            <p className="gps-muted gps-route-start">Salida: Depósito</p>
+            <p className="gps-muted gps-route-start">Salida: {DEPOT.name}</p>
             <ol className="gps-route-order">
               {ordered.map((point) => (
                 <li key={point.id}>
