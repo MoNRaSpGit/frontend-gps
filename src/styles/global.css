@@ -793,3 +793,105 @@ button {
   font-size: 0.85rem;
   font-style: italic;
 }
+
+/* Pestaña "Clientes": repartir clientes entre repartidores (22/10/2026). */
+.gps-assign-personas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.gps-assign-persona {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gps-assign-persona.is-active {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #fff;
+}
+
+.gps-assign-count {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.gps-assign-persona.is-active .gps-assign-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.gps-assign-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+@media (max-width: 760px) {
+  .gps-assign-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gps-assign-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.gps-assign-list {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.gps-assign-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.gps-assign-row.is-mine {
+  cursor: default;
+  border-left: 4px solid #16a34a;
+}
+
+.gps-assign-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gps-assign-action {
+  flex-shrink: 0;
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.gps-assign-approx {
+  color: #b45309;
+}
+
+.gps-assign-remove {
+  flex-shrink: 0;
+}

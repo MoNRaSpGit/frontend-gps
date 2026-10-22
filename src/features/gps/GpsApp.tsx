@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { AdminDashboard } from "./admin/AdminDashboard";
+import { ClientAssignScreen } from "./clientes/ClientAssignScreen";
 import { LoginScreen } from "./auth/LoginScreen";
 import { useAuthSession } from "./auth/useAuthSession";
 import { logout } from "./gps.client";
@@ -8,6 +10,7 @@ const ROLE_LABELS = { admin: "Admin", repartidor: "Repartidor" } as const;
 
 export function GpsApp() {
   const { session, saveSession, clearSession } = useAuthSession();
+  const [adminTab, setAdminTab] = useState<"panel" | "clientes">("panel");
 
   if (!session) {
     return <LoginScreen onLogin={saveSession} />;
@@ -32,7 +35,19 @@ export function GpsApp() {
         </div>
       </header>
 
-      {session.user.role === "admin" && <AdminDashboard session={session} />}
+      {session.user.role === "admin" && (
+        <div className="gps-persona-tabs-wrap">
+          <nav className="gps-persona-tabs">
+            <button type="button" className={adminTab === "panel" ? "is-active" : ""} onClick={() => setAdminTab("panel")}>
+              Panel
+            </button>
+            <button type="button" className={adminTab === "clientes" ? "is-active" : ""} onClick={() => setAdminTab("clientes")}>
+              Clientes
+            </button>
+          </nav>
+          {adminTab === "panel" ? <AdminDashboard session={session} /> : <ClientAssignScreen session={session} />}
+        </div>
+      )}
       {session.user.role === "repartidor" && <RepartidorTabsScreen session={session} />}
     </div>
   );

@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import { fetchPersonas } from "../gps.client";
 import type { GpsPersona, GpsSession } from "../gps.types";
+import { ClientAssignScreen } from "../clientes/ClientAssignScreen";
 import { RepartidorScreen } from "./RepartidorScreen";
+
+// Pestaña extra para repartir los clientes entre los repartidores.
+const CLIENTS_TAB = "__clientes";
 
 // Pedido explicito (20/10/2026): un solo login de repartidor, con 4
 // pestañas adentro (Martín/Ana/Juan/Pedro) -- cada una con sus propios
@@ -51,8 +55,15 @@ export function RepartidorTabsScreen({ session }: { session: GpsSession }) {
             {persona.fullName}
           </button>
         ))}
+        <button type="button" className={activeKey === CLIENTS_TAB ? "is-active" : ""} onClick={() => setActiveKey(CLIENTS_TAB)}>
+          Clientes
+        </button>
       </nav>
-      <RepartidorScreen key={activePersona.key} session={session} persona={activePersona} />
+      {activeKey === CLIENTS_TAB ? (
+        <ClientAssignScreen session={session} />
+      ) : (
+        <RepartidorScreen key={activePersona.key} session={session} persona={activePersona} />
+      )}
     </div>
   );
 }

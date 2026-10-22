@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../../shared/config/api";
-import type { GpsClient, GpsFinalRoute, GpsGeneratedFinalRoute, GpsPersona, GpsRepartidorStatus, GpsRoute, GpsSession, GpsUsage, GpsUser } from "./gps.types";
+import type { GpsClient, GpsClientAssignment, GpsFinalRoute, GpsGeneratedFinalRoute, GpsPersona, GpsRepartidorStatus, GpsRoute, GpsSession, GpsUsage, GpsUser } from "./gps.types";
 
 // El backend corto el servicio de rutas por llegar al limite (429): la
 // pantalla muestra el cartel de "comunicarse con el proveedor".
@@ -52,6 +52,15 @@ export function fetchPersonas(token: string) {
 export function fetchClients(token: string, persona?: string) {
   const query = persona ? `?persona=${encodeURIComponent(persona)}` : "";
   return request<GpsClient[]>(`/clients${query}`, token);
+}
+
+export function fetchAssignments(token: string) {
+  return request<GpsClientAssignment[]>("/clients/assignments", token);
+}
+
+// persona null = devolver a "sin asignar".
+export function assignClients(token: string, clientIds: number[], persona: string | null) {
+  return request<{ updated: number }>("/clients/assign", token, { method: "POST", body: JSON.stringify({ clientIds, persona }) });
 }
 
 export function fetchMyPicks(token: string, persona: string) {

@@ -49,3 +49,13 @@ export type GpsGeneratedFinalRoute = {
   // Orden de visita elegido a mano (null = el optimo calculado).
   customOrder: number[] | null;
 };
+
+// Pestaña "Clientes": a que repartidor pertenece cada cliente.
+export type GpsClientAssignment = {
+  id: number;
+  name: string;
+  address: string;
+  assignedUsername: string | null;
+  // puerta / esquina / calle (calle = ubicacion aproximada)
+  geoQuality: string | null;
+};
