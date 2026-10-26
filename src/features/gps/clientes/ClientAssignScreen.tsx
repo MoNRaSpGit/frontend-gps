@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { assignClients, fetchAssignments, fetchPersonas } from "../gps.client";
 import type { GpsClientAssignment, GpsPersona, GpsSession } from "../gps.types";
+import { AddClientModal } from "./AddClientModal";
 
 function normalize(text: string) {
   return text
@@ -19,6 +20,8 @@ export function ClientAssignScreen({ session }: { session: GpsSession }) {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     Promise.all([fetchPersonas(session.token), fetchAssignments(session.token)])
@@ -67,7 +70,22 @@ export function ClientAssignScreen({ session }: { session: GpsSession }) {
         <span className="gps-muted">
           {clients.length} clientes · {totalUnassigned} sin asignar
         </span>
+        <button type="button" className="gps-button" onClick={() => setAdding(true)}>
+          + Agregar cliente
+        </button>
       </div>
+      {notice && <p className="gps-success">{notice}</p>}
+      {adding && (
+        <AddClientModal
+          session={session}
+          onClose={() => setAdding(false)}
+          onCreated={(client) => {
+            setClients((list) => (list ? [...list, client].sort((a, b) => a.name.localeCompare(b.name, "es")) : list));
+            setAdding(false);
+            setNotice(`"${client.name}" agregado: está en "Sin asignar".`);
+          }}
+        />
+      )}
       <p className="gps-muted">Elegí un repartidor y tocá los clientes para dárselos. Los que ya tienen repartidor desaparecen de la lista.</p>
 
       <div className="gps-assign-personas">

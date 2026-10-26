@@ -63,6 +63,22 @@ export function assignClients(token: string, clientIds: number[], persona: strin
   return request<{ updated: number }>("/clients/assign", token, { method: "POST", body: JSON.stringify({ clientIds, persona }) });
 }
 
+// "Agregar cliente" a mano (27/10/2026): ubicar la direccion y guardar.
+export type GpsGeocodeResult =
+  | { found: true; lat: number; lng: number; quality: "puerta" | "esquina" | "calle"; matched: string }
+  | { found: false };
+
+export function geocodeAddress(token: string, address: string) {
+  return request<GpsGeocodeResult>("/clients/geocode", token, { method: "POST", body: JSON.stringify({ address }) });
+}
+
+export function createClient(
+  token: string,
+  data: { name: string; address: string; lat: number; lng: number; geoQuality: "puerta" | "esquina" | "calle" }
+) {
+  return request<GpsClientAssignment>("/clients", token, { method: "POST", body: JSON.stringify(data) });
+}
+
 export function fetchMyPicks(token: string, persona: string) {
   return request<{ clientIds: number[] }>(`/picks/me?persona=${encodeURIComponent(persona)}`, token);
 }
