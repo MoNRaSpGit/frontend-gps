@@ -4,7 +4,9 @@ export type GpsUser = { id: number; username: string; fullName: string | null; r
 
 export type GpsSession = { user: GpsUser; token: string };
 
-export type GpsClient = { id: number; name: string; address: string; lat: number; lng: number };
+// hasLocation=false: su direccion no se encontro (27/10/2026) -> no puede
+// entrar en una ruta hasta que se actualice en Clientes.
+export type GpsClient = { id: number; name: string; address: string; lat: number; lng: number; hasLocation: boolean };
 
 export type GpsPersona = { key: string; fullName: string };
 

@@ -21,6 +21,8 @@ export function ClientAssignScreen({ session }: { session: GpsSession }) {
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
+  // Cliente al que se le esta actualizando la ubicacion.
+  const [updating, setUpdating] = useState<GpsClientAssignment | null>(null);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -82,7 +84,23 @@ export function ClientAssignScreen({ session }: { session: GpsSession }) {
           onCreated={(client) => {
             setClients((list) => (list ? [...list, client].sort((a, b) => a.name.localeCompare(b.name, "es")) : list));
             setAdding(false);
-            setNotice(`"${client.name}" agregado: está en "Sin asignar".`);
+            setNotice(
+              client.geoQuality === "ninguna"
+                ? `"${client.name}" ingresado, pero su ubicación no se encontró: no va a poder entrar en la ruta hasta que la actualices.`
+                : `"${client.name}" agregado: está en "Sin asignar".`
+            );
+          }}
+        />
+      )}
+      {updating && (
+        <AddClientModal
+          session={session}
+          client={updating}
+          onClose={() => setUpdating(null)}
+          onCreated={(client) => {
+            setClients((list) => list?.map((entry) => (entry.id === client.id ? client : entry)) ?? list);
+            setUpdating(null);
+            setNotice(`Ubicación de "${client.name}" actualizada: ya puede entrar en la ruta.`);
           }}
         />
       )}
@@ -117,17 +135,23 @@ export function ClientAssignScreen({ session }: { session: GpsSession }) {
           <h3 className="gps-assign-title">Sin asignar ({unassigned.length})</h3>
           <ul className="gps-list gps-assign-list">
             {unassigned.map((client) => (
-              <li key={client.id}>
+              <li key={client.id} className={client.geoQuality === "ninguna" ? "gps-assign-missing" : undefined}>
                 <button type="button" className="gps-card gps-assign-row" onClick={() => moveClient(client.id, activeKey)}>
                   <span className="gps-assign-text">
                     <strong>{client.name}</strong>
                     <span className="gps-muted">
                       {client.address}
                       {client.geoQuality === "calle" && <em className="gps-assign-approx"> · ubicación aproximada</em>}
+                      {client.geoQuality === "ninguna" && <em className="gps-assign-noloc"> · ubicación no encontrada</em>}
                     </span>
                   </span>
                   <span className="gps-assign-action">+ {activePersona?.fullName}</span>
                 </button>
+                {client.geoQuality === "ninguna" && (
+                  <button type="button" className="gps-link-button" onClick={() => setUpdating(client)}>
+                    Actualizar ubicación
+                  </button>
+                )}
               </li>
             ))}
             {unassigned.length === 0 && (
@@ -145,7 +169,15 @@ export function ClientAssignScreen({ session }: { session: GpsSession }) {
               <li key={client.id} className="gps-card gps-assign-row is-mine">
                 <span className="gps-assign-text">
                   <strong>{client.name}</strong>
-                  <span className="gps-muted">{client.address}</span>
+                  <span className="gps-muted">
+                    {client.address}
+                    {client.geoQuality === "ninguna" && <em className="gps-assign-noloc"> · ubicación no encontrada</em>}
+                  </span>
+                  {client.geoQuality === "ninguna" && (
+                    <button type="button" className="gps-link-button" onClick={() => setUpdating(client)}>
+                      Actualizar ubicación
+                    </button>
+                  )}
                 </span>
                 <button type="button" className="gps-button-secondary gps-assign-remove" onClick={() => moveClient(client.id, null)}>
                   Quitar

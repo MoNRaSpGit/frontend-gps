@@ -19,6 +19,8 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
   // Ultima ruta final generada (queda guardada aunque se reinicien las rutas).
   const [finalRoute, setFinalRoute] = useState<GpsGeneratedFinalRoute | null>(null);
   const [error, setError] = useState("");
+  // Cliente sin ubicacion que se intento tildar (cartel, 27/10/2026).
+  const [blockedClient, setBlockedClient] = useState<GpsClient | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewPoints, setPreviewPoints] = useState<RoutePoint[] | null>(null);
   const [showFinalRoute, setShowFinalRoute] = useState(false);
@@ -77,6 +79,11 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
 
   function toggleClient(clientId: number) {
     if (confirmed) return;
+    const client = clients.find((entry) => entry.id === clientId);
+    if (client && !client.hasLocation && !selectedIds.has(clientId)) {
+      setBlockedClient(client);
+      return;
+    }
     setSelectedIds((current) => {
       const next = new Set(current);
       if (next.has(clientId)) next.delete(clientId);
@@ -95,7 +102,7 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
         setConfirmed(true);
         setPreviewPoints(
           clients
-            .filter((client) => selectedIds.has(client.id))
+            .filter((client) => selectedIds.has(client.id) && client.hasLocation)
             .map((client) => ({ id: client.id, lat: client.lat, lng: client.lng, title: client.name, subtitle: client.address }))
         );
         loadAll();
@@ -216,7 +223,10 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
               />
               <div>
                 <strong>{client.name}</strong>
-                <span className="gps-muted">{client.address}</span>
+                <span className="gps-muted">
+                  {client.address}
+                  {!client.hasLocation && <em className="gps-assign-noloc"> · ubicación no encontrada</em>}
+                </span>
               </div>
             </label>
           </li>
@@ -228,6 +238,23 @@ export function RepartidorScreen({ session, persona }: { session: GpsSession; pe
             <p className="gps-muted">Sin resultados para "{search}".</p>
           ))}
       </ul>
+
+      {blockedClient && (
+        <div className="gps-modal-overlay" onClick={() => setBlockedClient(null)}>
+          <div className="gps-modal-card gps-confirm-card" role="alertdialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <h2>No se puede incluir en la ruta</h2>
+            <p className="gps-muted">
+              No se puede hacer la ruta con <strong>{blockedClient.name}</strong>: su ubicación no es correcta ({blockedClient.address}). Hay que
+              actualizar la dirección en la sección Clientes.
+            </p>
+            <div className="gps-confirm-actions">
+              <button type="button" className="gps-button" onClick={() => setBlockedClient(null)} autoFocus>
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="gps-bottom-bar">
         <div>

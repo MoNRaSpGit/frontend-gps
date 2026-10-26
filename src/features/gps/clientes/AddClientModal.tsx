@@ -1,11 +1,14 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { createClient, geocodeAddress, type GpsGeocodeResult } from "../gps.client";
+import { createClient, geocodeAddress, updateClientLocation, type GpsGeocodeResult } from "../gps.client";
 import type { GpsClientAssignment, GpsSession } from "../gps.types";
 
 type Props = {
   session: GpsSession;
+  // Con client: "Actualizar ubicacion" de ese cliente (no se cambia el
+  // nombre). Sin client: alta de un cliente nuevo.
+  client?: GpsClientAssignment;
   onClose: () => void;
   onCreated: (client: GpsClientAssignment) => void;
 };
@@ -16,9 +19,15 @@ const QUALITY_LABELS = { puerta: "puerta exacta", esquina: "en la esquina", call
 // direccion; "Buscar direccion" la ubica en el mapa (geocodificador
 // oficial, no gasta cupo de rutas) y se confirma viendo el pin antes de
 // guardar. Queda sin asignar, como cualquier otro cliente.
-export function AddClientModal({ session, onClose, onCreated }: Props) {
-  const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
+//
+// Si la direccion no se encuentra (ej. "Ruta 35"), en el alta se puede
+// guardar igual "sin ubicacion" (pedido explicito 27/10/2026): queda
+// marcado y no entra en las rutas hasta actualizarlo.
+export function AddClientModal({ session, client, onClose, onCreated }: Props) {
+  const isUpdate = Boolean(client);
+  const [name, setName] = useState(client?.name ?? "");
+  const [address, setAddress] = useState(client?.address ?? "");
+  const [notFound, setNotFound] = useState(false);
   const [result, setResult] = useState<Extract<GpsGeocodeResult, { found: true }> | null>(null);
   const [searchedAddress, setSearchedAddress] = useState("");
   const [busy, setBusy] = useState<"search" | "save" | null>(null);
@@ -41,12 +50,15 @@ export function AddClientModal({ session, onClose, onCreated }: Props) {
     setBusy("search");
     setError("");
     setResult(null);
+    setNotFound(false);
     geocodeAddress(session.token, address.trim())
       .then((found) => {
         if (found.found) {
           setResult(found);
           setSearchedAddress(address.trim());
         } else {
+          setNotFound(true);
+          setSearchedAddress(address.trim());
           setError("No encontramos esa dirección en Tacuarembó. Probá escribirla de otra forma (ej: \"Catalina 294\" o \"18 de Julio esquina Figueroa\").");
         }
       })
@@ -59,7 +71,20 @@ export function AddClientModal({ session, onClose, onCreated }: Props) {
     if (!name.trim()) return setError("Poné el nombre del cliente.");
     setBusy("save");
     setError("");
-    createClient(session.token, { name: name.trim(), address: searchedAddress, lat: result.lat, lng: result.lng, geoQuality: result.quality })
+    const data = { address: searchedAddress, lat: result.lat, lng: result.lng, geoQuality: result.quality };
+    (client ? updateClientLocation(session.token, client.id, data) : createClient(session.token, { name: name.trim(), ...data }))
+      .then(onCreated)
+      .catch((err) => setError(err instanceof Error ? err.message : "No se pudo guardar el cliente."))
+      .finally(() => setBusy(null));
+  }
+
+  // Alta "sin ubicacion": la direccion no se encontro pero el cliente se
+  // guarda igual (no va a poder entrar en una ruta).
+  function handleSaveWithoutLocation() {
+    if (!name.trim()) return setError("Poné el nombre del cliente.");
+    setBusy("save");
+    setError("");
+    createClient(session.token, { name: name.trim(), address: searchedAddress || address.trim(), geoQuality: "ninguna" })
       .then(onCreated)
       .catch((err) => setError(err instanceof Error ? err.message : "No se pudo guardar el cliente."))
       .finally(() => setBusy(null));
@@ -69,17 +94,19 @@ export function AddClientModal({ session, onClose, onCreated }: Props) {
     <div className="gps-modal-overlay" onClick={busy ? undefined : onClose}>
       <div className="gps-modal-card gps-add-client" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
         <header className="gps-modal-header">
-          <h2>Agregar cliente</h2>
+          <h2>{isUpdate ? `Actualizar ubicación · ${client?.name}` : "Agregar cliente"}</h2>
           <button type="button" className="gps-modal-close" onClick={onClose} disabled={busy !== null}>
             ✕
           </button>
         </header>
 
         <form className="gps-add-client-form" onSubmit={handleSearch}>
-          <label className="gps-field">
-            <span>Nombre</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej: Almacén Don Pepe" autoFocus />
-          </label>
+          {!isUpdate && (
+            <label className="gps-field">
+              <span>Nombre</span>
+              <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej: Almacén Don Pepe" autoFocus />
+            </label>
+          )}
           <label className="gps-field">
             <span>Dirección (Tacuarembó)</span>
             <input
@@ -87,6 +114,7 @@ export function AddClientModal({ session, onClose, onCreated }: Props) {
               onChange={(event) => {
                 setAddress(event.target.value);
                 setResult(null);
+                setNotFound(false);
               }}
               placeholder="Ej: Catalina 294 · o · 18 de Julio esquina Figueroa"
             />
@@ -112,8 +140,13 @@ export function AddClientModal({ session, onClose, onCreated }: Props) {
           <button type="button" className="gps-button-secondary" onClick={onClose} disabled={busy !== null}>
             Cancelar
           </button>
+          {notFound && !isUpdate && (
+            <button type="button" className="gps-button-warning" onClick={handleSaveWithoutLocation} disabled={busy !== null}>
+              Guardar sin ubicación
+            </button>
+          )}
           <button type="button" className="gps-button" onClick={handleSave} disabled={!result || busy !== null}>
-            {busy === "save" ? "Guardando…" : "Guardar cliente"}
+            {busy === "save" ? "Guardando…" : isUpdate ? "Guardar ubicación" : "Guardar cliente"}
           </button>
         </div>
       </div>

@@ -72,11 +72,21 @@ export function geocodeAddress(token: string, address: string) {
   return request<GpsGeocodeResult>("/clients/geocode", token, { method: "POST", body: JSON.stringify({ address }) });
 }
 
+// Sin lat/lng y geoQuality "ninguna" = cliente sin ubicacion (direccion no
+// encontrada): se guarda igual pero no entra en las rutas.
 export function createClient(
   token: string,
-  data: { name: string; address: string; lat: number; lng: number; geoQuality: "puerta" | "esquina" | "calle" }
+  data: { name: string; address: string; lat?: number; lng?: number; geoQuality: "puerta" | "esquina" | "calle" | "ninguna" }
 ) {
   return request<GpsClientAssignment>("/clients", token, { method: "POST", body: JSON.stringify(data) });
+}
+
+export function updateClientLocation(
+  token: string,
+  clientId: number,
+  data: { address: string; lat: number; lng: number; geoQuality: "puerta" | "esquina" | "calle" }
+) {
+  return request<GpsClientAssignment>(`/clients/${clientId}/location`, token, { method: "PATCH", body: JSON.stringify(data) });
 }
 
 export function fetchMyPicks(token: string, persona: string) {
